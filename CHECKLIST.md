@@ -24,8 +24,9 @@
 - [x] Initialize Go module (`go mod init github.com/xvierd/mcp-obsidian-go`)
 - [x] Create `.gitignore` for Go projects
 - [x] Create `Makefile` with basic commands
-- [x] Set up GitHub repository
+- [x] Set up GitHub repository (https://github.com/dvidxv/mcp-obsidian-go)
 - [x] Create initial `README.md` with project description
+- [x] First commit and push to main
 
 #### Day 3-4: Configuration Layer
 - [x] Create `internal/config` package
