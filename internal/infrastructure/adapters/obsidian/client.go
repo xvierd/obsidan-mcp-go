@@ -30,13 +30,14 @@ type Client struct {
 type ClientOption func(*Client)
 
 // NewClient creates a new Obsidian API client with connection pooling.
-func NewClient(apiKey, host string, port int, opts ...ClientOption) *Client {
+// Set insecure to true to skip TLS verification (required for Obsidian's self-signed certs).
+func NewClient(apiKey, host string, port int, insecure bool, opts ...ClientOption) *Client {
 	transport := &http.Transport{
 		MaxIdleConns:        10,
 		MaxIdleConnsPerHost: 10,
 		IdleConnTimeout:     90 * time.Second,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // Obsidian uses self-signed cert
+			InsecureSkipVerify: insecure,
 		},
 	}
 

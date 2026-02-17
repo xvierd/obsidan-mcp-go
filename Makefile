@@ -1,8 +1,7 @@
-.PHONY: all setup build build-all test test-unit test-integration coverage fmt lint vet check run run-indexer clean help
+.PHONY: all setup build build-all test test-unit test-integration coverage fmt lint vet check run clean help
 
 # Variables
 BINARY_NAME=mcp-obsidian-go
-INDEXER_NAME=mcp-obsidian-indexer
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DIR=build
 LDFLAGS=-ldflags "-X main.Version=$(VERSION) -s -w"
@@ -20,7 +19,6 @@ setup:
 build:
 	mkdir -p $(BUILD_DIR)
 	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/server
-	go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME) ./cmd/indexer
 
 ## Build for all platforms
 build-all: build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-linux-arm64 build-windows-amd64
@@ -28,27 +26,22 @@ build-all: build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-linux-a
 build-darwin-amd64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/server
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-amd64 ./cmd/indexer
 
 build-darwin-arm64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/server
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-arm64 ./cmd/indexer
 
 build-linux-amd64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/server
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-linux-amd64 ./cmd/indexer
 
 build-linux-arm64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/server
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-linux-arm64 ./cmd/indexer
 
 build-windows-amd64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/server
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-windows-amd64.exe ./cmd/indexer
 
 ## Run tests
 test:
@@ -71,7 +64,6 @@ coverage:
 ## Format code
 fmt:
 	go fmt ./...
-	goimports -w .
 
 ## Run linter
 lint:
@@ -81,16 +73,12 @@ lint:
 vet:
 	go vet ./...
 
-## Run all checks
-check: fmt vet lint test
+## Run all checks (requires golangci-lint: make setup)
+check: fmt vet test
 
 ## Run server locally
 run:
 	go run ./cmd/server
-
-## Run indexer
-run-indexer:
-	go run ./cmd/indexer $(ARGS)
 
 ## Clean build artifacts
 clean:
@@ -100,17 +88,16 @@ clean:
 ## Show help
 help:
 	@echo "Available targets:"
-	@echo "  setup        - Setup development environment"
+	@echo "  setup        - Setup development environment (installs goimports, golangci-lint)"
 	@echo "  build        - Build local binary"
 	@echo "  build-all    - Build for all platforms"
 	@echo "  test         - Run all tests"
 	@echo "  test-unit    - Run unit tests only"
 	@echo "  coverage     - Generate coverage report"
 	@echo "  fmt          - Format code"
-	@echo "  lint         - Run linter"
+	@echo "  lint         - Run linter (requires golangci-lint)"
 	@echo "  vet          - Run go vet"
 	@echo "  check        - Run all checks"
 	@echo "  run          - Run server locally"
-	@echo "  run-indexer  - Run indexer (use ARGS=\"...\")"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  help         - Show this help"

@@ -5,6 +5,19 @@ import (
 	"fmt"
 )
 
+// Error codes used in DomainError.
+const (
+	CodeNotFound         = "NOT_FOUND"
+	CodeUnauthorized     = "UNAUTHORIZED"
+	CodeForbidden        = "FORBIDDEN"
+	CodeTimeout          = "TIMEOUT"
+	CodeRateLimited      = "RATE_LIMITED"
+	CodeValidation       = "VALIDATION"
+	CodeConnectionFailed = "CONNECTION_FAILED"
+	CodeInvalidRequest   = "INVALID_REQUEST"
+	CodeServerError      = "SERVER_ERROR"
+)
+
 // DomainError represents an error that occurred in the domain layer.
 type DomainError struct {
 	Code    string `json:"code"`
@@ -28,115 +41,59 @@ func (e *DomainError) Unwrap() error {
 	return e.Err
 }
 
-// IsNotFound returns true if the error is a not found error.
-func IsNotFound(err error) bool {
+// Common domain errors as DomainError values for consistent checking.
+var (
+	ErrNoteNotFound     = &DomainError{Code: CodeNotFound, Message: "note not found"}
+	ErrUnauthorized     = &DomainError{Code: CodeUnauthorized, Message: "unauthorized"}
+	ErrForbidden        = &DomainError{Code: CodeForbidden, Message: "forbidden"}
+	ErrConnectionFailed = &DomainError{Code: CodeConnectionFailed, Message: "connection failed"}
+	ErrTimeout          = &DomainError{Code: CodeTimeout, Message: "request timeout"}
+	ErrRateLimited      = &DomainError{Code: CodeRateLimited, Message: "rate limited"}
+	ErrInvalidRequest   = &DomainError{Code: CodeInvalidRequest, Message: "invalid request"}
+	ErrServerError      = &DomainError{Code: CodeServerError, Message: "server error"}
+	ErrValidation       = &DomainError{Code: CodeValidation, Message: "validation error"}
+)
+
+// isDomainCode checks if an error has the given domain error code.
+func isDomainCode(err error, code string) bool {
 	if err == nil {
 		return false
 	}
 	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "NOT_FOUND"
+	if errors.As(err, &domainErr) {
+		return domainErr.Code == code
 	}
-	return err == ErrNoteNotFound
+	return false
 }
+
+// IsNotFound returns true if the error is a not found error.
+func IsNotFound(err error) bool { return isDomainCode(err, CodeNotFound) }
 
 // IsUnauthorized returns true if the error is an unauthorized error.
-func IsUnauthorized(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "UNAUTHORIZED"
-	}
-	return err == ErrUnauthorized
-}
+func IsUnauthorized(err error) bool { return isDomainCode(err, CodeUnauthorized) }
 
 // IsForbidden returns true if the error is a forbidden error.
-func IsForbidden(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "FORBIDDEN"
-	}
-	return err == ErrForbidden
-}
+func IsForbidden(err error) bool { return isDomainCode(err, CodeForbidden) }
 
 // IsTimeout returns true if the error is a timeout error.
-func IsTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "TIMEOUT"
-	}
-	return err == ErrTimeout
-}
+func IsTimeout(err error) bool { return isDomainCode(err, CodeTimeout) }
 
 // IsRateLimited returns true if the error is a rate limited error.
-func IsRateLimited(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "RATE_LIMITED"
-	}
-	return err == ErrRateLimited
-}
+func IsRateLimited(err error) bool { return isDomainCode(err, CodeRateLimited) }
 
 // IsValidation returns true if the error is a validation error.
-func IsValidation(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "VALIDATION"
-	}
-	return err == ErrValidation
-}
+func IsValidation(err error) bool { return isDomainCode(err, CodeValidation) }
 
 // IsConnectionFailed returns true if the error is a connection failed error.
-func IsConnectionFailed(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "CONNECTION_FAILED"
-	}
-	return err == ErrConnectionFailed
-}
+func IsConnectionFailed(err error) bool { return isDomainCode(err, CodeConnectionFailed) }
 
 // IsInvalidRequest returns true if the error is an invalid request error.
-func IsInvalidRequest(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "INVALID_REQUEST"
-	}
-	return err == ErrInvalidRequest
-}
+func IsInvalidRequest(err error) bool { return isDomainCode(err, CodeInvalidRequest) }
 
 // IsServerError returns true if the error is a server error.
-func IsServerError(err error) bool {
-	if err == nil {
-		return false
-	}
-	var domainErr *DomainError
-	if As(err, &domainErr) {
-		return domainErr.Code == "SERVER_ERROR"
-	}
-	return err == ErrServerError
-}
+func IsServerError(err error) bool { return isDomainCode(err, CodeServerError) }
 
-// NewDomainError creates a new DomainError.
+// NewDomainError creates a new DomainError with a code and message.
 func NewDomainError(code, message string) error {
 	return &DomainError{
 		Code:    code,
@@ -150,9 +107,4 @@ func NewDomainErrorWrap(code string, err error) error {
 		Code: code,
 		Err:  err,
 	}
-}
-
-// As is a wrapper for errors.As.
-func As(err error, target interface{}) bool {
-	return errors.As(err, target)
 }

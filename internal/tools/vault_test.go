@@ -96,7 +96,8 @@ func TestRegisterVaultTools(t *testing.T) {
 	searchService := services.NewSearchService(&mockSearchRepository{}, logger)
 	cmdService := services.NewCommandService(&mockCommandRepository{}, logger)
 
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	statusService := services.NewStatusService(&mockStatusRepo{}, logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	RegisterVaultTools(registry)
 

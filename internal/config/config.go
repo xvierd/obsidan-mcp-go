@@ -19,9 +19,10 @@ type Config struct {
 
 // ObsidianConfig holds configuration for the Obsidian REST API connection.
 type ObsidianConfig struct {
-	APIKey string `yaml:"api_key"`
-	Host   string `yaml:"host"`
-	Port   int    `yaml:"port"`
+	APIKey   string `yaml:"api_key"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Insecure bool   `yaml:"insecure"` // Skip TLS verification (Obsidian uses self-signed certs)
 }
 
 // ServerConfig holds configuration for the MCP server.
@@ -42,8 +43,9 @@ type CacheConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Obsidian: ObsidianConfig{
-			Host: "127.0.0.1",
-			Port: 27124,
+			Host:     "127.0.0.1",
+			Port:     27124,
+			Insecure: true, // Default true: Obsidian Local REST API uses self-signed certs
 		},
 		Server: ServerConfig{
 			Transport: "stdio",
@@ -143,6 +145,9 @@ func (c *Config) loadFromEnv() {
 		if p, err := strconv.Atoi(port); err == nil {
 			c.Obsidian.Port = p
 		}
+	}
+	if insecure := os.Getenv("OBSIDIAN_INSECURE"); insecure != "" {
+		c.Obsidian.Insecure = insecure == "true" || insecure == "1"
 	}
 
 	// Load server config from env

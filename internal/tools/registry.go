@@ -24,12 +24,13 @@ type Handler func(ctx context.Context, params json.RawMessage) (interface{}, err
 
 // Registry manages MCP tools and their handlers.
 type Registry struct {
-	tools         map[string]*Tool
-	handlers      map[string]Handler
-	logger        *slog.Logger
-	noteService   *services.NoteService
-	searchService *services.SearchService
-	cmdService    *services.CommandService
+	tools          map[string]*Tool
+	handlers       map[string]Handler
+	logger         *slog.Logger
+	noteService    *services.NoteService
+	searchService  *services.SearchService
+	cmdService     *services.CommandService
+	statusService  *services.StatusService
 }
 
 // NewRegistry creates a new tool registry.
@@ -38,14 +39,16 @@ func NewRegistry(
 	noteService *services.NoteService,
 	searchService *services.SearchService,
 	cmdService *services.CommandService,
+	statusService *services.StatusService,
 ) *Registry {
 	return &Registry{
-		tools:         make(map[string]*Tool),
-		handlers:      make(map[string]Handler),
-		logger:        logger,
-		noteService:   noteService,
-		searchService: searchService,
-		cmdService:    cmdService,
+		tools:          make(map[string]*Tool),
+		handlers:       make(map[string]Handler),
+		logger:         logger,
+		noteService:    noteService,
+		searchService:  searchService,
+		cmdService:     cmdService,
+		statusService:  statusService,
 	}
 }
 
@@ -118,6 +121,11 @@ func (r *Registry) GetSearchService() *services.SearchService {
 // GetCommandService returns the command service.
 func (r *Registry) GetCommandService() *services.CommandService {
 	return r.cmdService
+}
+
+// GetStatusService returns the status service.
+func (r *Registry) GetStatusService() *services.StatusService {
+	return r.statusService
 }
 
 // GetLogger returns the logger.

@@ -4,6 +4,7 @@ package memory
 import (
 	"container/list"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/xvierd/mcp-obsidian-go/internal/application/ports"
@@ -17,9 +18,9 @@ type Cache struct {
 	ttl     time.Duration
 	items   map[string]*cacheItem
 	order   *list.List
-	mu      sync.RWMutex
-	hits    int64
-	misses  int64
+	mu      sync.Mutex
+	hits    atomic.Int64
+	misses  atomic.Int64
 }
 
 // cacheItem represents a cached item with metadata.
@@ -45,31 +46,25 @@ var _ ports.CacheRepository = (*Cache)(nil)
 
 // Get retrieves a note from the cache.
 func (c *Cache) Get(key string) (*domain.Note, bool) {
-	c.mu.RLock()
-	item, exists := c.items[key]
-	c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
+	item, exists := c.items[key]
 	if !exists {
-		c.mu.Lock()
-		c.misses++
-		c.mu.Unlock()
+		c.misses.Add(1)
 		return nil, false
 	}
 
 	// Check if item has expired
 	if time.Since(item.timestamp) > c.ttl {
-		c.mu.Lock()
 		c.remove(key)
-		c.misses++
-		c.mu.Unlock()
+		c.misses.Add(1)
 		return nil, false
 	}
 
 	// Move to front (most recently used)
-	c.mu.Lock()
 	c.order.MoveToFront(item.element)
-	c.hits++
-	c.mu.Unlock()
+	c.hits.Add(1)
 
 	return item.value, true
 }
@@ -115,21 +110,25 @@ func (c *Cache) Clear() {
 	defer c.mu.Unlock()
 	c.items = make(map[string]*cacheItem)
 	c.order = list.New()
-	c.hits = 0
-	c.misses = 0
+	c.hits.Store(0)
+	c.misses.Store(0)
 }
 
 // Stats returns cache statistics.
 func (c *Cache) Stats() ports.CacheStats {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	size := len(c.items)
+	c.mu.Unlock()
+
+	hits := c.hits.Load()
+	misses := c.misses.Load()
 
 	return ports.CacheStats{
-		Size:    len(c.items),
+		Size:    size,
 		MaxSize: c.maxSize,
-		Hits:    c.hits,
-		Misses:  c.misses,
-		HitRate: c.hitRate(),
+		Hits:    hits,
+		Misses:  misses,
+		HitRate: hitRate(hits, misses),
 		TTL:     c.ttl,
 	}
 }
@@ -152,10 +151,10 @@ func (c *Cache) evictOldest() {
 }
 
 // hitRate calculates the cache hit rate.
-func (c *Cache) hitRate() float64 {
-	total := c.hits + c.misses
+func hitRate(hits, misses int64) float64 {
+	total := hits + misses
 	if total == 0 {
 		return 0
 	}
-	return float64(c.hits) / float64(total)
+	return float64(hits) / float64(total)
 }

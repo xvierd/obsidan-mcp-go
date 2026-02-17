@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 
 	// Access unexported fields through testing
 	if client.apiKey != "test-key" {
@@ -30,7 +30,7 @@ func TestNewClient(t *testing.T) {
 
 func TestNewClientWithOptions(t *testing.T) {
 	customClient := &http.Client{Timeout: 5 * time.Second}
-	client := NewClient("test-key", "127.0.0.1", 27124,
+	client := NewClient("test-key", "127.0.0.1", 27124, true,
 		WithHTTPClient(customClient),
 		WithTimeout(10*time.Second),
 	)
@@ -58,7 +58,7 @@ func TestClientGetNote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -83,7 +83,7 @@ func TestClientGetNoteNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -108,7 +108,7 @@ func TestClientListNotes(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -141,7 +141,7 @@ func TestClientCreateNote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -165,7 +165,7 @@ func TestClientUpdateNote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -189,7 +189,7 @@ func TestClientDeleteNote(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -219,7 +219,7 @@ func TestClientSearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -247,7 +247,7 @@ func TestClientListCommands(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -268,7 +268,7 @@ func TestClientUnauthorized(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("wrong-key", "127.0.0.1", 27124)
+	client := NewClient("wrong-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
@@ -290,7 +290,7 @@ func TestClientContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient("test-key", "127.0.0.1", 27124)
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 

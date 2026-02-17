@@ -3,21 +3,7 @@
 package domain
 
 import (
-	"errors"
 	"time"
-)
-
-// Common domain errors (pure business logic errors, no HTTP specifics).
-var (
-	ErrNoteNotFound     = errors.New("note not found")
-	ErrUnauthorized     = errors.New("unauthorized")
-	ErrForbidden        = errors.New("forbidden")
-	ErrConnectionFailed = errors.New("connection failed")
-	ErrTimeout          = errors.New("request timeout")
-	ErrRateLimited      = errors.New("rate limited")
-	ErrInvalidRequest   = errors.New("invalid request")
-	ErrServerError      = errors.New("server error")
-	ErrValidation       = errors.New("validation error")
 )
 
 // Note represents an Obsidian note with its metadata and content.

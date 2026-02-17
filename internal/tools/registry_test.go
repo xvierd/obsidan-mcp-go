@@ -76,6 +76,12 @@ func (m *mockSearchRepo) DataviewQuery(ctx context.Context, query string) (*doma
 	return nil, nil
 }
 
+type mockStatusRepo struct{}
+
+func (m *mockStatusRepo) ServerStatus(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{"status": "ok"}, nil
+}
+
 type mockCommandRepo struct{}
 
 func (m *mockCommandRepo) ListCommands(ctx context.Context) ([]domain.Command, error) {
@@ -85,7 +91,7 @@ func (m *mockCommandRepo) ExecuteCommand(ctx context.Context, commandID string) 
 	return nil
 }
 
-func createTestServices(logger *slog.Logger) (*services.NoteService, *services.SearchService, *services.CommandService) {
+func createTestServices(logger *slog.Logger) (*services.NoteService, *services.SearchService, *services.CommandService, *services.StatusService) {
 	noteService := services.NewNoteService(
 		&mockNoteRepo{},
 		nil,
@@ -94,14 +100,15 @@ func createTestServices(logger *slog.Logger) (*services.NoteService, *services.S
 	)
 	searchService := services.NewSearchService(&mockSearchRepo{}, logger)
 	cmdService := services.NewCommandService(&mockCommandRepo{}, logger)
-	return noteService, searchService, cmdService
+	statusService := services.NewStatusService(&mockStatusRepo{}, logger)
+	return noteService, searchService, cmdService, statusService
 }
 
 func TestNewRegistry(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
 
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	if registry == nil {
 		t.Fatal("expected registry to be created")
@@ -122,8 +129,8 @@ func TestNewRegistry(t *testing.T) {
 
 func TestRegistryRegister(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	tool := &Tool{
 		Name:        "test_tool",
@@ -176,8 +183,8 @@ func TestRegistryRegister(t *testing.T) {
 
 func TestRegistryListTools(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	// Register multiple tools
 	for i := 0; i < 3; i++ {
@@ -199,8 +206,8 @@ func TestRegistryListTools(t *testing.T) {
 
 func TestRegistryExecute(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	tool := &Tool{
 		Name:        "execute_test",
@@ -229,8 +236,8 @@ func TestRegistryExecute(t *testing.T) {
 
 func TestRegistryExecuteNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	_, err := registry.Execute(context.Background(), "nonexistent", nil)
 	if err == nil {
@@ -244,8 +251,8 @@ func TestRegistryExecuteNotFound(t *testing.T) {
 
 func TestRegistryGetters(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	if registry.GetNoteService() != noteService {
 		t.Error("GetNoteService returned wrong service")
@@ -266,8 +273,8 @@ func TestRegistryGetters(t *testing.T) {
 
 func TestGetToolNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	_, found := registry.GetTool("nonexistent")
 	if found {
@@ -277,8 +284,8 @@ func TestGetToolNotFound(t *testing.T) {
 
 func TestGetHandlerNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	noteService, searchService, cmdService := createTestServices(logger)
-	registry := NewRegistry(logger, noteService, searchService, cmdService)
+	noteService, searchService, cmdService, statusService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService, statusService)
 
 	_, found := registry.GetHandler("nonexistent")
 	if found {
