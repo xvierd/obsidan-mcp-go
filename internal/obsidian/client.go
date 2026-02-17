@@ -64,6 +64,31 @@ func WithTimeout(timeout time.Duration) ClientOption {
 	}
 }
 
+// Get performs a GET request to the Obsidian API.
+func (c *Client) Get(ctx context.Context, endpoint string) (*http.Response, error) {
+	return c.doRequest(ctx, "GET", endpoint, nil)
+}
+
+// Post performs a POST request to the Obsidian API.
+func (c *Client) Post(ctx context.Context, endpoint string, body []byte) (*http.Response, error) {
+	return c.doRequest(ctx, "POST", endpoint, body)
+}
+
+// Put performs a PUT request to the Obsidian API.
+func (c *Client) Put(ctx context.Context, endpoint string, body []byte) (*http.Response, error) {
+	return c.doRequest(ctx, "PUT", endpoint, body)
+}
+
+// Patch performs a PATCH request to the Obsidian API.
+func (c *Client) Patch(ctx context.Context, endpoint string, body []byte) (*http.Response, error) {
+	return c.doRequest(ctx, "PATCH", endpoint, body)
+}
+
+// Delete performs a DELETE request to the Obsidian API.
+func (c *Client) Delete(ctx context.Context, endpoint string) (*http.Response, error) {
+	return c.doRequest(ctx, "DELETE", endpoint, nil)
+}
+
 // GetNote retrieves a note by path.
 func (c *Client) GetNote(ctx context.Context, notePath string) (*Note, error) {
 	endpoint := path.Join("/vault/", notePath)
@@ -136,7 +161,7 @@ func (c *Client) CreateNote(ctx context.Context, notePath string, content string
 	return nil
 }
 
-// UpdateNote updates an existing note.
+// UpdateNote updates an existing note (replaces content).
 func (c *Client) UpdateNote(ctx context.Context, notePath string, content string) error {
 	endpoint := path.Join("/vault/", notePath)
 
@@ -147,6 +172,30 @@ func (c *Client) UpdateNote(ctx context.Context, notePath string, content string
 	}
 
 	resp, err := c.doRequest(ctx, "PUT", endpoint, jsonBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// AppendNote appends content to an existing note.
+func (c *Client) AppendNote(ctx context.Context, notePath string, content string) error {
+	endpoint := path.Join("/vault/", notePath)
+
+	body := map[string]string{"content": content}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "POST", endpoint, jsonBody)
 	if err != nil {
 		return err
 	}
@@ -178,11 +227,62 @@ func (c *Client) DeleteNote(ctx context.Context, notePath string) error {
 	return nil
 }
 
+// PatchNote patches a specific section of a note (heading, block, or frontmatter).
+func (c *Client) PatchNote(ctx context.Context, notePath string, patch PatchRequest) error {
+	endpoint := path.Join("/vault/", notePath)
+
+	jsonBody, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal patch request: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "PATCH", endpoint, jsonBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // Search performs a simple text search in the vault.
 func (c *Client) Search(ctx context.Context, query string) ([]SearchResult, error) {
 	endpoint := fmt.Sprintf("/search/simple/?query=%s", url.QueryEscape(query))
 
 	resp, err := c.doRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	var results []SearchResult
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("failed to decode search results: %w", err)
+	}
+
+	return results, nil
+}
+
+// ComplexSearch performs a complex search using JsonLogic query.
+func (c *Client) ComplexSearch(ctx context.Context, query map[string]interface{}) ([]SearchResult, error) {
+	endpoint := "/search/jsonlogic/"
+
+	jsonBody, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal search query: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "POST", endpoint, jsonBody)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +320,213 @@ func (c *Client) GetActiveNote(ctx context.Context) (*Note, error) {
 	}
 
 	return &note, nil
+}
+
+// UpdateActiveNote updates the currently active note.
+func (c *Client) UpdateActiveNote(ctx context.Context, content string) error {
+	body := map[string]string{"content": content}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "PUT", "/active/", jsonBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// AppendActiveNote appends content to the currently active note.
+func (c *Client) AppendActiveNote(ctx context.Context, content string) error {
+	body := map[string]string{"content": content}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "POST", "/active/", jsonBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeleteActiveNote deletes the currently active note.
+func (c *Client) DeleteActiveNote(ctx context.Context) error {
+	resp, err := c.doRequest(ctx, "DELETE", "/active/", nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// PatchActiveNote patches a specific section of the active note.
+func (c *Client) PatchActiveNote(ctx context.Context, patch PatchRequest) error {
+	jsonBody, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal patch request: %w", err)
+	}
+
+	resp, err := c.doRequest(ctx, "PATCH", "/active/", jsonBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// OpenNote opens a note in Obsidian.
+func (c *Client) OpenNote(ctx context.Context, notePath string) error {
+	endpoint := path.Join("/open/", notePath)
+
+	resp, err := c.doRequest(ctx, "POST", endpoint, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// ListCommands lists all available Obsidian commands.
+func (c *Client) ListCommands(ctx context.Context) ([]Command, error) {
+	resp, err := c.doRequest(ctx, "GET", "/commands/", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	var commands []Command
+	if err := json.NewDecoder(resp.Body).Decode(&commands); err != nil {
+		return nil, fmt.Errorf("failed to decode commands: %w", err)
+	}
+
+	return commands, nil
+}
+
+// ExecuteCommand executes an Obsidian command by ID.
+func (c *Client) ExecuteCommand(ctx context.Context, commandID string) error {
+	endpoint := fmt.Sprintf("/commands/%s/", url.PathEscape(commandID))
+
+	resp, err := c.doRequest(ctx, "POST", endpoint, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// GetRecentChanges gets recent file changes in the vault.
+func (c *Client) GetRecentChanges(ctx context.Context, limit int) ([]RecentChange, error) {
+	endpoint := fmt.Sprintf("/vault/recent/?limit=%d", limit)
+
+	resp, err := c.doRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	var changes []RecentChange
+	if err := json.NewDecoder(resp.Body).Decode(&changes); err != nil {
+		return nil, fmt.Errorf("failed to decode recent changes: %w", err)
+	}
+
+	return changes, nil
+}
+
+// GetPeriodicNote gets a periodic note (daily, weekly, monthly, etc.).
+func (c *Client) GetPeriodicNote(ctx context.Context, period string, offset int) (*Note, error) {
+	endpoint := fmt.Sprintf("/periodic/%s/?offset=%d", url.PathEscape(period), offset)
+
+	resp, err := c.doRequest(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	var note Note
+	if err := json.NewDecoder(resp.Body).Decode(&note); err != nil {
+		return nil, fmt.Errorf("failed to decode periodic note: %w", err)
+	}
+
+	return &note, nil
+}
+
+// DataviewQuery executes a Dataview query.
+func (c *Client) DataviewQuery(ctx context.Context, query string) (*DataviewResult, error) {
+	endpoint := "/dataview/?query=" + url.QueryEscape(query)
+
+	resp, err := c.doRequest(ctx, "POST", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPStatus(resp.StatusCode, string(body))
+	}
+
+	var result DataviewResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode dataview result: %w", err)
+	}
+
+	return &result, nil
 }
 
 // ServerStatus checks if the Obsidian server is running.

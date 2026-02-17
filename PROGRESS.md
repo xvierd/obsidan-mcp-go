@@ -27,9 +27,10 @@
 - **Code Quality:** go vet passes
 
 ### Repository
-- **GitHub:** https://github.com/dvidxv/mcp-obsidian-go
-- **Commits:** 1 (clean initial setup)
-- **Files:** 15 source files, 2,210 lines
+- **Local:** `~/projects/mcp-obsidian-go/` ✅
+- **Remote:** ❌ REMOVED (waiting for user-provided repo)
+- **Commits:** 2 (local only)
+- **Files:** 16 source files
 
 ---
 

@@ -64,3 +64,42 @@ type Task struct {
 	Completed bool   `json:"completed"`
 	Line      int    `json:"line"`
 }
+
+// PatchRequest represents a request to patch a note.
+type PatchRequest struct {
+	// Operation is the type of patch operation: "append", "prepend", "replace"
+	Operation string `json:"operation"`
+
+	// Target specifies what to patch: "content", "heading", "block", "frontmatter"
+	Target string `json:"target"`
+
+	// TargetValue specifies the target identifier (e.g., heading text, block ID)
+	TargetValue string `json:"targetValue,omitempty"`
+
+	// Content is the new content to apply
+	Content string `json:"content"`
+}
+
+// RecentChange represents a recent file change in the vault.
+type RecentChange struct {
+	Path      string    `json:"path"`
+	Operation string    `json:"operation"` // "created", "modified", "deleted"
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// DataviewResult represents the result of a Dataview query.
+type DataviewResult struct {
+	Headers []string        `json:"headers"`
+	Rows    [][]interface{} `json:"rows"`
+	Count   int             `json:"count"`
+}
+
+// PeriodicNoteType represents the type of periodic note.
+type PeriodicNoteType string
+
+const (
+	PeriodicDaily   PeriodicNoteType = "daily"
+	PeriodicWeekly  PeriodicNoteType = "weekly"
+	PeriodicMonthly PeriodicNoteType = "monthly"
+	PeriodicYearly  PeriodicNoteType = "yearly"
+)

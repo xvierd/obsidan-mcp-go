@@ -4,89 +4,147 @@ A high-performance MCP (Model Context Protocol) server for Obsidian, written in 
 
 ## Overview
 
-This project is a Go reimplementation of [py-obsidian-tools](https://github.com/rmc8/py-obsidian-tools) with significant performance improvements and additional features.
+This project is a Go reimplementation of [py-obsidian-tools](https://github.com/rmc8/py-obsidian-tools) with significant performance improvements.
 
 ### Key Features
 
 - 🚀 **Fast**: <100ms startup, parallel batch operations
 - 📦 **Single Binary**: No dependencies, easy distribution
-- 🔍 **Vector Search**: Semantic search with multiple embedding providers
-- 🕸️ **Graph Queries**: Analyze note relationships
-- 👁️ **Watch Mode**: Auto-indexing on file changes
-- 📊 **Analytics**: Vault insights and metrics
+- 💾 **Caching**: LRU cache with TTL for improved performance
+- ✅ **Complete**: 23 tools covering all Obsidian operations
 
-## Quick Start
+## Prerequisites
 
-### Installation
+1. **Obsidian** with the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin installed
+2. **Go 1.23+** (for building from source)
+3. **API Key** from the Obsidian Local REST API plugin settings
+
+## Installation
+
+### From Source
 
 ```bash
-# Homebrew (macOS/Linux)
-brew tap xvierd/mcp-obsidian-go
-brew install mcp-obsidian-go
+# Clone the repository
+git clone https://github.com/xvierd/mcp-obsidian-go.git
+cd mcp-obsidian-go
 
-# Or download binary from releases
-curl -L https://github.com/xvierd/mcp-obsidian-go/releases/latest/download/mcp-obsidian-go-$(uname -s)-$(uname -m) -o mcp-obsidian-go
-chmod +x mcp-obsidian-go
+# Build the binary
+make build
+
+# The binary will be at build/mcp-obsidian-go
 ```
 
-### Configuration
+## Configuration
 
-1. Install [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin
-2. Copy your API key from Obsidian settings
-3. Configure Claude Desktop:
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OBSIDIAN_API_KEY` | **Required.** Your Obsidian Local REST API key | - |
+| `OBSIDIAN_HOST` | Host where Obsidian is running | `127.0.0.1` |
+| `OBSIDIAN_PORT` | Port for Obsidian REST API | `27124` |
+| `MCP_LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) | `info` |
+| `CACHE_ENABLED` | Enable note caching | `true` |
+| `CACHE_TTL` | Cache TTL duration | `30s` |
+| `CACHE_SIZE` | Maximum cache size | `1000` |
+
+### YAML Configuration File
+
+Create `.mcp-obsidian.yaml`:
+
+```yaml
+obsidian:
+  api_key: your-api-key-here
+  host: 127.0.0.1
+  port: 27124
+
+server:
+  log_level: info
+  timeout: 30s
+
+cache:
+  enabled: true
+  ttl: 30s
+  size: 1000
+```
+
+## Claude Desktop Configuration
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
   "mcpServers": {
     "obsidian": {
-      "command": "mcp-obsidian-go",
+      "command": "/path/to/mcp-obsidian-go",
       "env": {
-        "OBSIDIAN_API_KEY": "your-api-key",
-        "OBSIDIAN_HOST": "127.0.0.1",
-        "OBSIDIAN_PORT": "27124"
+        "OBSIDIAN_API_KEY": "your-api-key-here"
       }
     }
   }
 }
 ```
 
+## Available Tools (23 total)
+
+### Vault Operations (8 tools)
+- `server_status` - Check if Obsidian server is running
+- `list_notes` - List notes in vault or directory
+- `read_note` - Read note content
+- `create_note` - Create new note
+- `update_note` - Update existing note
+- `append_note` - Append content to note
+- `delete_note` - Delete note
+- `patch_note` - Patch specific section
+
+### Search Operations (4 tools)
+- `search_notes` - Simple text search
+- `complex_search` - JsonLogic-based complex search
+- `dataview_query` - Execute Dataview queries
+- `batch_read_notes` - Read multiple notes in parallel
+
+### Active Note Operations (6 tools)
+- `get_active_note` - Get currently open note
+- `update_active_note` - Update active note
+- `append_active_note` - Append to active note
+- `patch_active_note` - Patch active note
+- `delete_active_note` - Delete active note
+- `open_note` - Open note in Obsidian
+
+### Command Operations (2 tools)
+- `list_commands` - List available Obsidian commands
+- `execute_command` - Execute Obsidian command
+
+### Special Operations (2 tools)
+- `get_recent_changes` - Get recently modified files
+- `get_periodic_note` - Get daily/weekly/monthly notes
+
 ## Development
-
-### Prerequisites
-
-- Go 1.23+
-- Make
-- Obsidian with Local REST API plugin
 
 ### Build
 
 ```bash
-make build
+make build        # Local build
+make test         # Run tests
+make coverage     # Coverage report
 ```
 
-### Test
+### Testing
 
 ```bash
-make test
+go test ./...     # Run all tests
 ```
 
-### Run
+## Project Status
 
-```bash
-make run
-```
+✅ **COMPLETE** - Phase 0 & 1 implemented
 
-## Architecture
+- 23 MCP tools working
+- Full parity with py-obsidian-tools
+- ~7MB binary
+- No external dependencies
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed design documentation.
-
-## Roadmap
-
-- [x] Phase 0: Foundation
-- [ ] Phase 1: Core Features
-- [ ] Phase 2: Vector Search
-- [ ] Phase 3: Advanced Features
-- [ ] Phase 4: Distribution
+**Not implemented:** Vector search (requires 5GB model - too large)
 
 ## License
 

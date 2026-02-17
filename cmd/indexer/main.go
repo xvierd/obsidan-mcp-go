@@ -1,12 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 func main() {
-	fmt.Println("Indexer CLI - Not yet implemented")
-	fmt.Println("Usage: mcp-obsidian-indexer [full|update|clear|status]")
-	os.Exit(0)
+	fmt.Println("Indexer not implemented - vector search disabled")
 }

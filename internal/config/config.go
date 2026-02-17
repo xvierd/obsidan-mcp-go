@@ -1,12 +1,13 @@
-// Package config provides configuration management for the MCP Obsidian server.
-// It supports environment variables and YAML configuration files.
 package config
 
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Config holds all configuration for the application.
@@ -67,7 +68,7 @@ func DefaultConfig() *Config {
 		},
 		Vector: VectorConfig{
 			Enabled:      true,
-			Provider:     "ollama",
+			Provider:     "fasttext",
 			DBPath:       "~/.mcp-obsidian/vector.db",
 			BatchSize:    10,
 			ChunkSize:    500,
@@ -76,42 +77,151 @@ func DefaultConfig() *Config {
 	}
 }
 
-// Load loads configuration from environment variables.
+// Load loads configuration from environment variables and optionally from a YAML file.
+// Environment variables take precedence over YAML config.
 func Load() (*Config, error) {
 	cfg := DefaultConfig()
 
+	// First, try to load from YAML config file
+	if err := cfg.loadFromFile(); err != nil {
+		// Log but don't fail - env vars might provide all needed config
+		// We'll validate later
+	}
+
+	// Environment variables override YAML config
+	cfg.loadFromEnv()
+
+	return cfg, nil
+}
+
+// loadFromFile loads configuration from YAML files.
+// It looks for config in the following locations (in order of precedence):
+// 1. $MCP_OBSIDIAN_CONFIG environment variable (path to config file)
+// 2. ./.mcp-obsidian.yaml (current directory)
+// 3. ~/.config/mcp-obsidian/config.yaml
+func (c *Config) loadFromFile() error {
+	var configPath string
+
+	// Check environment variable first
+	if envPath := os.Getenv("MCP_OBSIDIAN_CONFIG"); envPath != "" {
+		configPath = envPath
+	} else {
+		// Look for config in standard locations
+		possiblePaths := []string{
+			".mcp-obsidian.yaml",
+			".mcp-obsidian.yml",
+		}
+
+		// Add home directory config paths
+		if home, err := os.UserHomeDir(); err == nil {
+			possiblePaths = append(possiblePaths,
+				filepath.Join(home, ".config", "mcp-obsidian", "config.yaml"),
+				filepath.Join(home, ".config", "mcp-obsidian", "config.yml"),
+				filepath.Join(home, ".mcp-obsidian.yaml"),
+				filepath.Join(home, ".mcp-obsidian.yml"),
+			)
+		}
+
+		// Find first existing config file
+		for _, path := range possiblePaths {
+			if _, err := os.Stat(path); err == nil {
+				configPath = path
+				break
+			}
+		}
+	}
+
+	// If no config file found, return without error
+	if configPath == "" {
+		return nil
+	}
+
+	// Read and parse config file
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
+	}
+
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return fmt.Errorf("failed to parse config file %s: %w", configPath, err)
+	}
+
+	return nil
+}
+
+// loadFromEnv loads configuration from environment variables.
+func (c *Config) loadFromEnv() {
 	// Load Obsidian config from env
 	if apiKey := os.Getenv("OBSIDIAN_API_KEY"); apiKey != "" {
-		cfg.Obsidian.APIKey = apiKey
+		c.Obsidian.APIKey = apiKey
 	}
 	if host := os.Getenv("OBSIDIAN_HOST"); host != "" {
-		cfg.Obsidian.Host = host
+		c.Obsidian.Host = host
 	}
 	if port := os.Getenv("OBSIDIAN_PORT"); port != "" {
-		p, err := strconv.Atoi(port)
-		if err != nil {
-			return nil, fmt.Errorf("invalid OBSIDIAN_PORT: %w", err)
+		if p, err := strconv.Atoi(port); err == nil {
+			c.Obsidian.Port = p
 		}
-		cfg.Obsidian.Port = p
 	}
 
 	// Load server config from env
 	if transport := os.Getenv("MCP_TRANSPORT"); transport != "" {
-		cfg.Server.Transport = transport
+		c.Server.Transport = transport
 	}
 	if logLevel := os.Getenv("MCP_LOG_LEVEL"); logLevel != "" {
-		cfg.Server.LogLevel = logLevel
+		c.Server.LogLevel = logLevel
+	}
+	if timeout := os.Getenv("MCP_TIMEOUT"); timeout != "" {
+		if d, err := time.ParseDuration(timeout); err == nil {
+			c.Server.Timeout = d
+		}
+	}
+
+	// Load cache config from env
+	if enabled := os.Getenv("CACHE_ENABLED"); enabled != "" {
+		c.Cache.Enabled = enabled == "true" || enabled == "1"
+	}
+	if ttl := os.Getenv("CACHE_TTL"); ttl != "" {
+		if d, err := time.ParseDuration(ttl); err == nil {
+			c.Cache.TTL = d
+		}
+	}
+	if size := os.Getenv("CACHE_SIZE"); size != "" {
+		if s, err := strconv.Atoi(size); err == nil {
+			c.Cache.Size = s
+		}
 	}
 
 	// Load vector config from env
+	if enabled := os.Getenv("VECTOR_ENABLED"); enabled != "" {
+		c.Vector.Enabled = enabled == "true" || enabled == "1"
+	}
 	if provider := os.Getenv("VECTOR_PROVIDER"); provider != "" {
-		cfg.Vector.Provider = provider
+		c.Vector.Provider = provider
 	}
 	if dbPath := os.Getenv("VECTOR_DB_PATH"); dbPath != "" {
-		cfg.Vector.DBPath = dbPath
+		c.Vector.DBPath = dbPath
+	}
+}
+
+// SaveToFile saves the configuration to a YAML file.
+func (c *Config) SaveToFile(path string) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	return cfg, nil
+	// Create directory if needed
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }
 
 // Validate checks if the configuration is valid.

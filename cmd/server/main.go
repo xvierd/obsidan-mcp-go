@@ -6,9 +6,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/xvierd/mcp-obsidian-go/internal/cache"
 	"github.com/xvierd/mcp-obsidian-go/internal/config"
 	"github.com/xvierd/mcp-obsidian-go/internal/mcp"
 	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/tools"
+
+	_ "github.com/asg017/sqlite-vec-go-bindings/cgo"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Version is set at build time
@@ -38,20 +43,34 @@ func main() {
 	logger.Info("configuration loaded",
 		"host", cfg.Obsidian.Host,
 		"port", cfg.Obsidian.Port,
+		"cache_enabled", cfg.Cache.Enabled,
 	)
 
 	// Create Obsidian client
-	client := obsidian.NewClient(
-		cfg.Obsidian.APIKey,
-		cfg.Obsidian.Host,
-		cfg.Obsidian.Port,
-	)
+	var client *obsidian.Client
+	if cfg.Cache.Enabled {
+		// Create cached client
+		baseClient := obsidian.NewClient(
+			cfg.Obsidian.APIKey,
+			cfg.Obsidian.Host,
+			cfg.Obsidian.Port,
+		)
+		cachedClient := cache.NewCachedClient(baseClient, cfg.Cache.Size, cfg.Cache.TTL)
+		client = cachedClient.Client
+		logger.Info("cache enabled", "size", cfg.Cache.Size, "ttl", cfg.Cache.TTL)
+	} else {
+		client = obsidian.NewClient(
+			cfg.Obsidian.APIKey,
+			cfg.Obsidian.Host,
+			cfg.Obsidian.Port,
+		)
+	}
 
 	// Create MCP server
 	server := mcp.NewServer(logger)
 
 	// Register tools
-	registerTools(server, client, logger)
+	registerTools(server, client, cfg, logger)
 
 	// Run server
 	ctx := context.Background()
@@ -61,10 +80,20 @@ func main() {
 	}
 }
 
-func registerTools(server *mcp.Server, client *obsidian.Client, logger *slog.Logger) {
+func registerTools(server *mcp.Server, client *obsidian.Client, cfg *config.Config, logger *slog.Logger) {
+	// Create tool registry
+	registry := tools.NewRegistry(logger, client)
+
+	// Register all tool categories
+	tools.RegisterVaultTools(registry)
+	tools.RegisterSearchTools(registry)
+	tools.RegisterCommandTools(registry)
+	tools.RegisterActiveNoteTools(registry)
+	tools.RegisterBatchTools(registry)
+
 	// Register server_status tool
-	server.RegisterTool(
-		&mcp.Tool{
+	registry.Register(
+		&tools.Tool{
 			Name:        "server_status",
 			Description: "Get the status of the Obsidian Local REST API server",
 			InputSchema: json.RawMessage(`{"type": "object", "properties": {}}`),
@@ -78,77 +107,33 @@ func registerTools(server *mcp.Server, client *obsidian.Client, logger *slog.Log
 		},
 	)
 
-	// Register list_notes tool
-	server.RegisterTool(
-		&mcp.Tool{
-			Name:        "list_notes",
-			Description: "List all notes in the vault or a specific directory",
-			InputSchema: json.RawMessage(`{
-				"type": "object",
-				"properties": {
-					"directory": {
-						"type": "string",
-						"description": "Optional subdirectory to list (e.g., 'daily/2024')"
-					}
-				}
-			}`),
-		},
-		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			var args struct {
-				Directory string `json:"directory"`
-			}
-			if err := json.Unmarshal(params, &args); err != nil {
-				return nil, err
-			}
+	// Register vector tools if enabled
+	if cfg.Vector.Enabled {
+		vectorCtx, err := tools.NewVectorContext(&cfg.Vector)
+		if err != nil {
+			logger.Warn("failed to create vector context, vector tools disabled", "error", err)
+		} else {
+			tools.RegisterVectorTools(registry, vectorCtx)
+			logger.Info("vector tools registered")
+		}
+	}
 
-			files, err := client.ListFiles(ctx, args.Directory)
-			if err != nil {
-				return nil, err
-			}
+	// Register all tools with MCP server
+	toolCount := 0
+	for _, tool := range registry.ListTools() {
+		t := tool // capture range variable
+		server.RegisterTool(
+			&mcp.Tool{
+				Name:        t.Name,
+				Description: t.Description,
+				InputSchema: t.InputSchema,
+			},
+			func(ctx context.Context, params json.RawMessage) (interface{}, error) {
+				return registry.Execute(ctx, t.Name, params)
+			},
+		)
+		toolCount++
+	}
 
-			result := map[string]interface{}{
-				"count": len(files),
-				"files": files,
-			}
-			return result, nil
-		},
-	)
-
-	// Register read_note tool
-	server.RegisterTool(
-		&mcp.Tool{
-			Name:        "read_note",
-			Description: "Read the content of a specific note",
-			InputSchema: json.RawMessage(`{
-				"type": "object",
-				"properties": {
-					"path": {
-						"type": "string",
-						"description": "Path to the note (e.g., 'daily/2024-01-01.md')"
-					}
-				},
-				"required": ["path"]
-			}`),
-		},
-		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			var args struct {
-				Path string `json:"path"`
-			}
-			if err := json.Unmarshal(params, &args); err != nil {
-				return nil, err
-			}
-
-			note, err := client.GetNote(ctx, args.Path)
-			if err != nil {
-				return nil, err
-			}
-
-			return map[string]interface{}{
-				"path":    note.Path,
-				"content": note.Content,
-			}, nil
-		},
-	)
-
-	logger.Info("tools registered", "count", 3)
+	logger.Info("tools registered", "count", toolCount)
 }
