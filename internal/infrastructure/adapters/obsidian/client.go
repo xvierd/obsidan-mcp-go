@@ -120,12 +120,14 @@ func (c *Client) ListNotes(ctx context.Context, directory string) ([]string, err
 		return nil, mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
 
-	var files []string
-	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
+	var result struct {
+		Files []string `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode files list: %w", err)
 	}
 
-	return files, nil
+	return result.Files, nil
 }
 
 // CreateNote creates a new note with the given content.
@@ -494,12 +496,14 @@ func (c *Client) ListCommands(ctx context.Context) ([]domain.Command, error) {
 		return nil, mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
 
-	var commands []domain.Command
-	if err := json.NewDecoder(resp.Body).Decode(&commands); err != nil {
+	var result struct {
+		Commands []domain.Command `json:"commands"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode commands: %w", err)
 	}
 
-	return commands, nil
+	return result.Commands, nil
 }
 
 // ExecuteCommand executes an Obsidian command by ID.
@@ -555,6 +559,7 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body []
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Accept", "application/vnd.olrapi.note+json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

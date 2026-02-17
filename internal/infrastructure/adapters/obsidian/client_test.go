@@ -103,8 +103,8 @@ func TestClientListNotes(t *testing.T) {
 			t.Errorf("expected path '/vault/', got %s", r.URL.Path)
 		}
 
-		files := []string{"note1.md", "note2.md", "folder/note3.md"}
-		json.NewEncoder(w).Encode(files)
+		result := map[string][]string{"files": {"note1.md", "note2.md", "folder/note3.md"}}
+		json.NewEncoder(w).Encode(result)
 	}))
 	defer server.Close()
 
@@ -239,11 +239,13 @@ func TestClientListCommands(t *testing.T) {
 			t.Errorf("expected path '/commands/', got %s", r.URL.Path)
 		}
 
-		commands := []domain.Command{
-			{ID: "cmd1", Name: "Command 1"},
-			{ID: "cmd2", Name: "Command 2"},
+		result := map[string][]domain.Command{
+			"commands": {
+				{ID: "cmd1", Name: "Command 1"},
+				{ID: "cmd2", Name: "Command 2"},
+			},
 		}
-		json.NewEncoder(w).Encode(commands)
+		json.NewEncoder(w).Encode(result)
 	}))
 	defer server.Close()
 
