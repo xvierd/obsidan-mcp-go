@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/domain"
 )
 
 // RegisterActiveNoteTools registers all active note operation tools.
@@ -21,7 +21,7 @@ func RegisterActiveNoteTools(r *Registry) {
 			}`),
 		},
 		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			note, err := r.GetClient().GetActiveNote(ctx)
+			note, err := r.GetNoteService().GetActiveNote(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +59,7 @@ func RegisterActiveNoteTools(r *Registry) {
 				return nil, fmt.Errorf("invalid params: %w", err)
 			}
 
-			if err := r.GetClient().UpdateActiveNote(ctx, args.Content); err != nil {
+			if err := r.GetNoteService().UpdateActiveNote(ctx, args.Content); err != nil {
 				return nil, err
 			}
 
@@ -94,7 +94,7 @@ func RegisterActiveNoteTools(r *Registry) {
 				return nil, fmt.Errorf("invalid params: %w", err)
 			}
 
-			if err := r.GetClient().AppendActiveNote(ctx, args.Content); err != nil {
+			if err := r.GetNoteService().AppendActiveNote(ctx, args.Content); err != nil {
 				return nil, err
 			}
 
@@ -146,14 +146,14 @@ func RegisterActiveNoteTools(r *Registry) {
 				return nil, fmt.Errorf("invalid params: %w", err)
 			}
 
-			patch := obsidian.PatchRequest{
+			patch := domain.PatchRequest{
 				Operation:   args.Operation,
 				Target:      args.Target,
 				TargetValue: args.TargetValue,
 				Content:     args.Content,
 			}
 
-			if err := r.GetClient().PatchActiveNote(ctx, patch); err != nil {
+			if err := r.GetNoteService().PatchActiveNote(ctx, patch); err != nil {
 				return nil, err
 			}
 
@@ -175,7 +175,7 @@ func RegisterActiveNoteTools(r *Registry) {
 			}`),
 		},
 		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			if err := r.GetClient().DeleteActiveNote(ctx); err != nil {
+			if err := r.GetNoteService().DeleteActiveNote(ctx); err != nil {
 				return nil, err
 			}
 
@@ -214,7 +214,7 @@ func RegisterActiveNoteTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			if err := r.GetClient().OpenNote(ctx, args.Path); err != nil {
+			if err := r.GetNoteService().OpenNote(ctx, args.Path); err != nil {
 				return nil, err
 			}
 
@@ -257,7 +257,7 @@ func RegisterActiveNoteTools(r *Registry) {
 				args.Limit = 1000
 			}
 
-			changes, err := r.GetClient().GetRecentChanges(ctx, args.Limit)
+			changes, err := r.GetNoteService().GetRecentChanges(ctx, args.Limit)
 			if err != nil {
 				return nil, err
 			}
@@ -304,7 +304,7 @@ func RegisterActiveNoteTools(r *Registry) {
 				return nil, fmt.Errorf("period is required")
 			}
 
-			note, err := r.GetClient().GetPeriodicNote(ctx, args.Period, args.Offset)
+			note, err := r.GetNoteService().GetPeriodicNote(ctx, args.Period, args.Offset)
 			if err != nil {
 				return nil, err
 			}

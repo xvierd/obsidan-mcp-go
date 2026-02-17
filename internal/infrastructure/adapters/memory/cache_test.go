@@ -1,4 +1,4 @@
-package cache
+package memory
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/domain"
 )
 
-func TestNew(t *testing.T) {
-	c := New(100, 30*time.Second)
+func TestNewCache(t *testing.T) {
+	c := NewCache(100, 30*time.Second)
 
 	if c == nil {
 		t.Fatal("expected cache to be created")
@@ -26,9 +26,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestCacheSetAndGet(t *testing.T) {
-	c := New(10, time.Hour)
+	c := NewCache(10, time.Hour)
 
-	note := &obsidian.Note{
+	note := &domain.Note{
 		Path:    "test.md",
 		Content: "# Test",
 	}
@@ -49,7 +49,7 @@ func TestCacheSetAndGet(t *testing.T) {
 }
 
 func TestCacheGetNotFound(t *testing.T) {
-	c := New(10, time.Hour)
+	c := NewCache(10, time.Hour)
 
 	_, found := c.Get("nonexistent.md")
 
@@ -59,9 +59,9 @@ func TestCacheGetNotFound(t *testing.T) {
 }
 
 func TestCacheTTLExpiration(t *testing.T) {
-	c := New(10, 50*time.Millisecond)
+	c := NewCache(10, 50*time.Millisecond)
 
-	note := &obsidian.Note{
+	note := &domain.Note{
 		Path:    "test.md",
 		Content: "# Test",
 	}
@@ -85,15 +85,15 @@ func TestCacheTTLExpiration(t *testing.T) {
 }
 
 func TestCacheEviction(t *testing.T) {
-	c := New(3, time.Hour)
+	c := NewCache(3, time.Hour)
 
 	// Add 3 items (at capacity)
-	c.Set("note1.md", &obsidian.Note{Path: "note1.md"})
-	c.Set("note2.md", &obsidian.Note{Path: "note2.md"})
-	c.Set("note3.md", &obsidian.Note{Path: "note3.md"})
+	c.Set("note1.md", &domain.Note{Path: "note1.md"})
+	c.Set("note2.md", &domain.Note{Path: "note2.md"})
+	c.Set("note3.md", &domain.Note{Path: "note3.md"})
 
 	// Add one more (should evict oldest)
-	c.Set("note4.md", &obsidian.Note{Path: "note4.md"})
+	c.Set("note4.md", &domain.Note{Path: "note4.md"})
 
 	// note1 should be evicted (LRU)
 	_, found := c.Get("note1.md")
@@ -111,15 +111,15 @@ func TestCacheEviction(t *testing.T) {
 }
 
 func TestCacheUpdate(t *testing.T) {
-	c := New(10, time.Hour)
+	c := NewCache(10, time.Hour)
 
-	note1 := &obsidian.Note{
+	note1 := &domain.Note{
 		Path:    "test.md",
 		Content: "Original content",
 	}
 	c.Set("test.md", note1)
 
-	note2 := &obsidian.Note{
+	note2 := &domain.Note{
 		Path:    "test.md",
 		Content: "Updated content",
 	}
@@ -136,9 +136,9 @@ func TestCacheUpdate(t *testing.T) {
 }
 
 func TestCacheDelete(t *testing.T) {
-	c := New(10, time.Hour)
+	c := NewCache(10, time.Hour)
 
-	c.Set("test.md", &obsidian.Note{Path: "test.md"})
+	c.Set("test.md", &domain.Note{Path: "test.md"})
 	c.Delete("test.md")
 
 	_, found := c.Get("test.md")
@@ -148,10 +148,10 @@ func TestCacheDelete(t *testing.T) {
 }
 
 func TestCacheClear(t *testing.T) {
-	c := New(10, time.Hour)
+	c := NewCache(10, time.Hour)
 
-	c.Set("note1.md", &obsidian.Note{Path: "note1.md"})
-	c.Set("note2.md", &obsidian.Note{Path: "note2.md"})
+	c.Set("note1.md", &domain.Note{Path: "note1.md"})
+	c.Set("note2.md", &domain.Note{Path: "note2.md"})
 
 	c.Clear()
 
@@ -172,7 +172,7 @@ func TestCacheClear(t *testing.T) {
 }
 
 func TestCacheStats(t *testing.T) {
-	c := New(100, time.Hour)
+	c := NewCache(100, time.Hour)
 
 	// Initial stats
 	stats := c.Stats()
@@ -187,8 +187,8 @@ func TestCacheStats(t *testing.T) {
 	}
 
 	// Add items and access them
-	c.Set("test1.md", &obsidian.Note{Path: "test1.md"})
-	c.Set("test2.md", &obsidian.Note{Path: "test2.md"})
+	c.Set("test1.md", &domain.Note{Path: "test1.md"})
+	c.Set("test2.md", &domain.Note{Path: "test2.md"})
 
 	c.Get("test1.md")   // hit
 	c.Get("test2.md")   // hit
@@ -212,44 +212,15 @@ func TestCacheStats(t *testing.T) {
 	}
 }
 
-func TestCacheHitRate(t *testing.T) {
-	c := New(10, time.Hour)
-
-	// No accesses yet
-	rate := c.hitRate()
-	if rate != 0 {
-		t.Errorf("expected hit rate 0 with no accesses, got %f", rate)
-	}
-
-	// All misses
-	c.Get("missing1.md")
-	c.Get("missing2.md")
-
-	rate = c.hitRate()
-	if rate != 0 {
-		t.Errorf("expected hit rate 0 with all misses, got %f", rate)
-	}
-
-	// Add and access
-	c.Set("test.md", &obsidian.Note{Path: "test.md"})
-	c.Get("test.md")
-
-	rate = c.hitRate()
-	expectedRate := 1.0 / 3.0
-	if math.Abs(rate-expectedRate) > 0.0001 {
-		t.Errorf("expected hit rate %f, got %f", expectedRate, rate)
-	}
-}
-
 func TestCacheConcurrency(t *testing.T) {
-	c := New(100, time.Hour)
+	c := NewCache(100, time.Hour)
 
 	// Concurrent writes
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func(n int) {
 			path := fmt.Sprintf("note%d.md", n)
-			c.Set(path, &obsidian.Note{Path: path})
+			c.Set(path, &domain.Note{Path: path})
 			done <- true
 		}(i)
 	}

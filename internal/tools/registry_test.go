@@ -8,14 +8,100 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/application/services"
+	"github.com/xvierd/mcp-obsidian-go/internal/domain"
 )
+
+// Mock implementations for registry tests
+type mockNoteRepo struct{}
+
+func (m *mockNoteRepo) GetNote(ctx context.Context, path string) (*domain.Note, error) {
+	return nil, nil
+}
+func (m *mockNoteRepo) ListNotes(ctx context.Context, directory string) ([]string, error) {
+	return []string{}, nil
+}
+func (m *mockNoteRepo) CreateNote(ctx context.Context, path string, content string) error {
+	return nil
+}
+func (m *mockNoteRepo) UpdateNote(ctx context.Context, path string, content string) error {
+	return nil
+}
+func (m *mockNoteRepo) DeleteNote(ctx context.Context, path string) error {
+	return nil
+}
+func (m *mockNoteRepo) AppendNote(ctx context.Context, path string, content string) error {
+	return nil
+}
+func (m *mockNoteRepo) PatchNote(ctx context.Context, path string, patch domain.PatchRequest) error {
+	return nil
+}
+func (m *mockNoteRepo) OpenNote(ctx context.Context, path string) error {
+	return nil
+}
+func (m *mockNoteRepo) GetRecentChanges(ctx context.Context, limit int) ([]domain.RecentChange, error) {
+	return []domain.RecentChange{}, nil
+}
+func (m *mockNoteRepo) GetPeriodicNote(ctx context.Context, period string, offset int) (*domain.Note, error) {
+	return nil, nil
+}
+
+type mockActiveNoteRepo struct{}
+
+func (m *mockActiveNoteRepo) GetActiveNote(ctx context.Context) (*domain.Note, error) {
+	return nil, nil
+}
+func (m *mockActiveNoteRepo) UpdateActiveNote(ctx context.Context, content string) error {
+	return nil
+}
+func (m *mockActiveNoteRepo) AppendActiveNote(ctx context.Context, content string) error {
+	return nil
+}
+func (m *mockActiveNoteRepo) DeleteActiveNote(ctx context.Context) error {
+	return nil
+}
+func (m *mockActiveNoteRepo) PatchActiveNote(ctx context.Context, patch domain.PatchRequest) error {
+	return nil
+}
+
+type mockSearchRepo struct{}
+
+func (m *mockSearchRepo) Search(ctx context.Context, query string) ([]domain.SearchResult, error) {
+	return []domain.SearchResult{}, nil
+}
+func (m *mockSearchRepo) ComplexSearch(ctx context.Context, query map[string]interface{}) ([]domain.SearchResult, error) {
+	return []domain.SearchResult{}, nil
+}
+func (m *mockSearchRepo) DataviewQuery(ctx context.Context, query string) (*domain.DataviewResult, error) {
+	return nil, nil
+}
+
+type mockCommandRepo struct{}
+
+func (m *mockCommandRepo) ListCommands(ctx context.Context) ([]domain.Command, error) {
+	return []domain.Command{}, nil
+}
+func (m *mockCommandRepo) ExecuteCommand(ctx context.Context, commandID string) error {
+	return nil
+}
+
+func createTestServices(logger *slog.Logger) (*services.NoteService, *services.SearchService, *services.CommandService) {
+	noteService := services.NewNoteService(
+		&mockNoteRepo{},
+		nil,
+		&mockActiveNoteRepo{},
+		logger,
+	)
+	searchService := services.NewSearchService(&mockSearchRepo{}, logger)
+	cmdService := services.NewCommandService(&mockCommandRepo{}, logger)
+	return noteService, searchService, cmdService
+}
 
 func TestNewRegistry(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
+	noteService, searchService, cmdService := createTestServices(logger)
 
-	registry := NewRegistry(logger, client)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	if registry == nil {
 		t.Fatal("expected registry to be created")
@@ -25,8 +111,8 @@ func TestNewRegistry(t *testing.T) {
 		t.Error("expected logger to be set")
 	}
 
-	if registry.client != client {
-		t.Error("expected client to be set")
+	if registry.noteService != noteService {
+		t.Error("expected noteService to be set")
 	}
 
 	if len(registry.tools) != 0 {
@@ -36,8 +122,8 @@ func TestNewRegistry(t *testing.T) {
 
 func TestRegistryRegister(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	tool := &Tool{
 		Name:        "test_tool",
@@ -90,8 +176,8 @@ func TestRegistryRegister(t *testing.T) {
 
 func TestRegistryListTools(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	// Register multiple tools
 	for i := 0; i < 3; i++ {
@@ -113,8 +199,8 @@ func TestRegistryListTools(t *testing.T) {
 
 func TestRegistryExecute(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	tool := &Tool{
 		Name:        "execute_test",
@@ -143,8 +229,8 @@ func TestRegistryExecute(t *testing.T) {
 
 func TestRegistryExecuteNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	_, err := registry.Execute(context.Background(), "nonexistent", nil)
 	if err == nil {
@@ -158,11 +244,19 @@ func TestRegistryExecuteNotFound(t *testing.T) {
 
 func TestRegistryGetters(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
-	if registry.GetClient() != client {
-		t.Error("GetClient returned wrong client")
+	if registry.GetNoteService() != noteService {
+		t.Error("GetNoteService returned wrong service")
+	}
+
+	if registry.GetSearchService() != searchService {
+		t.Error("GetSearchService returned wrong service")
+	}
+
+	if registry.GetCommandService() != cmdService {
+		t.Error("GetCommandService returned wrong service")
 	}
 
 	if registry.GetLogger() != logger {
@@ -172,8 +266,8 @@ func TestRegistryGetters(t *testing.T) {
 
 func TestGetToolNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	_, found := registry.GetTool("nonexistent")
 	if found {
@@ -183,8 +277,8 @@ func TestGetToolNotFound(t *testing.T) {
 
 func TestGetHandlerNotFound(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	client := &obsidian.Client{}
-	registry := NewRegistry(logger, client)
+	noteService, searchService, cmdService := createTestServices(logger)
+	registry := NewRegistry(logger, noteService, searchService, cmdService)
 
 	_, found := registry.GetHandler("nonexistent")
 	if found {

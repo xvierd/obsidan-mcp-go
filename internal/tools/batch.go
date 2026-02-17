@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/domain"
 )
 
 // BatchReadResult represents the result of reading a single note in a batch operation
@@ -24,13 +24,13 @@ type BatchReadError struct {
 	Error string `json:"error"`
 }
 
-// BatchNoteClient defines the interface needed for batch operations
-type BatchNoteClient interface {
-	GetNote(ctx context.Context, path string) (*obsidian.Note, error)
+// BatchNoteService defines the interface needed for batch operations
+type BatchNoteService interface {
+	GetNote(ctx context.Context, path string) (*domain.Note, error)
 }
 
 // batchReadNotes reads multiple notes in parallel using goroutines
-func batchReadNotes(ctx context.Context, client BatchNoteClient, paths []string) ([]BatchReadResult, []BatchReadError) {
+func batchReadNotes(ctx context.Context, svc BatchNoteService, paths []string) ([]BatchReadResult, []BatchReadError) {
 	var wg sync.WaitGroup
 	results := make([]BatchReadResult, 0, len(paths))
 	errors := make([]BatchReadError, 0)
@@ -52,7 +52,7 @@ func batchReadNotes(ctx context.Context, client BatchNoteClient, paths []string)
 			default:
 			}
 
-			note, err := client.GetNote(ctx, p)
+			note, err := svc.GetNote(ctx, p)
 			if err != nil {
 				select {
 				case errorChan <- BatchReadError{
@@ -133,7 +133,7 @@ func RegisterBatchTools(r *Registry) {
 				return nil, fmt.Errorf("batch size exceeds maximum of 100")
 			}
 
-			results, errors := batchReadNotes(ctx, r.GetClient(), args.Paths)
+			results, errors := batchReadNotes(ctx, r.GetNoteService(), args.Paths)
 
 			return map[string]interface{}{
 				"total":   len(args.Paths),

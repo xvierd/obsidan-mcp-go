@@ -19,7 +19,7 @@ func RegisterCommandTools(r *Registry) {
 			}`),
 		},
 		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			commands, err := r.GetClient().ListCommands(ctx)
+			commands, err := r.GetCommandService().ListCommands(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -59,7 +59,7 @@ func RegisterCommandTools(r *Registry) {
 				return nil, fmt.Errorf("command_id is required")
 			}
 
-			if err := r.GetClient().ExecuteCommand(ctx, args.CommandID); err != nil {
+			if err := r.GetCommandService().ExecuteCommand(ctx, args.CommandID); err != nil {
 				return nil, err
 			}
 

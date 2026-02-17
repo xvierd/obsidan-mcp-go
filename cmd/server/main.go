@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/cache"
+	"github.com/xvierd/mcp-obsidian-go/internal/application/services"
 	"github.com/xvierd/mcp-obsidian-go/internal/config"
+	"github.com/xvierd/mcp-obsidian-go/internal/infrastructure/adapters/memory"
+	"github.com/xvierd/mcp-obsidian-go/internal/infrastructure/adapters/obsidian"
 	"github.com/xvierd/mcp-obsidian-go/internal/mcp"
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
 	"github.com/xvierd/mcp-obsidian-go/internal/tools"
 )
 
@@ -43,31 +44,50 @@ func main() {
 		"cache_enabled", cfg.Cache.Enabled,
 	)
 
-	// Create Obsidian client
-	var client *obsidian.Client
+	// Create infrastructure adapters
+	// 1. Create Obsidian HTTP client adapter
+	obsidianClient := obsidian.NewClient(
+		cfg.Obsidian.APIKey,
+		cfg.Obsidian.Host,
+		cfg.Obsidian.Port,
+	)
+
+	// 2. Create cache adapter (if enabled)
+	var cacheAdapter *memory.Cache
 	if cfg.Cache.Enabled {
-		// Create cached client
-		baseClient := obsidian.NewClient(
-			cfg.Obsidian.APIKey,
-			cfg.Obsidian.Host,
-			cfg.Obsidian.Port,
-		)
-		cachedClient := cache.NewCachedClient(baseClient, cfg.Cache.Size, cfg.Cache.TTL)
-		client = cachedClient.Client
+		cacheAdapter = memory.NewCache(cfg.Cache.Size, cfg.Cache.TTL)
 		logger.Info("cache enabled", "size", cfg.Cache.Size, "ttl", cfg.Cache.TTL)
-	} else {
-		client = obsidian.NewClient(
-			cfg.Obsidian.APIKey,
-			cfg.Obsidian.Host,
-			cfg.Obsidian.Port,
-		)
 	}
+
+	// Create application services
+	// Services depend only on ports (interfaces), not concrete implementations
+	noteService := services.NewNoteService(
+		obsidianClient, // implements ports.NoteRepository
+		cacheAdapter,   // implements ports.CacheRepository (can be nil)
+		obsidianClient, // implements ports.ActiveNoteRepository
+		logger,
+	)
+
+	searchService := services.NewSearchService(
+		obsidianClient, // implements ports.SearchRepository
+		logger,
+	)
+
+	commandService := services.NewCommandService(
+		obsidianClient, // implements ports.CommandRepository
+		logger,
+	)
+
+	statusService := services.NewStatusService(
+		obsidianClient, // implements ports.ServerStatusRepository
+		logger,
+	)
 
 	// Create MCP server
 	server := mcp.NewServer(logger)
 
 	// Register tools
-	registerTools(server, client, cfg, logger)
+	registerTools(server, noteService, searchService, commandService, statusService, cfg, logger)
 
 	// Run server
 	ctx := context.Background()
@@ -77,9 +97,18 @@ func main() {
 	}
 }
 
-func registerTools(server *mcp.Server, client *obsidian.Client, cfg *config.Config, logger *slog.Logger) {
+func registerTools(
+	server *mcp.Server,
+	noteService *services.NoteService,
+	searchService *services.SearchService,
+	commandService *services.CommandService,
+	statusService *services.StatusService,
+	cfg *config.Config,
+	logger *slog.Logger,
+) {
 	// Create tool registry
-	registry := tools.NewRegistry(logger, client)
+	// Registry now depends on services, not the HTTP client directly
+	registry := tools.NewRegistry(logger, noteService, searchService, commandService)
 
 	// Register all tool categories
 	tools.RegisterVaultTools(registry)
@@ -89,6 +118,7 @@ func registerTools(server *mcp.Server, client *obsidian.Client, cfg *config.Conf
 	tools.RegisterBatchTools(registry)
 
 	// Register server_status tool
+	// Uses the StatusService which properly implements the ServerStatusRepository port
 	registry.Register(
 		&tools.Tool{
 			Name:        "server_status",
@@ -96,11 +126,19 @@ func registerTools(server *mcp.Server, client *obsidian.Client, cfg *config.Conf
 			InputSchema: json.RawMessage(`{"type": "object", "properties": {}}`),
 		},
 		func(ctx context.Context, params json.RawMessage) (interface{}, error) {
-			status, err := client.ServerStatus(ctx)
+			status, err := statusService.GetStatus(ctx)
 			if err != nil {
-				return nil, err
+				// If we can't get status, server might be down
+				return map[string]interface{}{
+					"status":  "unreachable",
+					"message": "Could not connect to Obsidian server",
+				}, nil
 			}
-			return status, nil
+			return map[string]interface{}{
+				"status":  "ok",
+				"message": "Obsidian server is reachable",
+				"details": status,
+			}, nil
 		},
 	)
 

@@ -36,7 +36,7 @@ func RegisterSearchTools(r *Registry) {
 				return nil, fmt.Errorf("query is required")
 			}
 
-			results, err := r.GetClient().Search(ctx, args.Query)
+			results, err := r.GetSearchService().Search(ctx, args.Query)
 			if err != nil {
 				return nil, err
 			}
@@ -76,7 +76,7 @@ func RegisterSearchTools(r *Registry) {
 				return nil, fmt.Errorf("query is required")
 			}
 
-			results, err := r.GetClient().ComplexSearch(ctx, args.Query)
+			results, err := r.GetSearchService().ComplexSearch(ctx, args.Query)
 			if err != nil {
 				return nil, err
 			}
@@ -116,7 +116,7 @@ func RegisterSearchTools(r *Registry) {
 				return nil, fmt.Errorf("query is required")
 			}
 
-			result, err := r.GetClient().DataviewQuery(ctx, args.Query)
+			result, err := r.GetSearchService().DataviewQuery(ctx, args.Query)
 			if err != nil {
 				return nil, err
 			}

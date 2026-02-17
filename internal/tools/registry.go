@@ -1,4 +1,5 @@
 // Package tools provides MCP tool implementations for Obsidian operations.
+// Tools call application services, not infrastructure directly.
 package tools
 
 import (
@@ -8,7 +9,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/application/services"
 )
 
 // Tool represents an MCP tool.
@@ -23,19 +24,28 @@ type Handler func(ctx context.Context, params json.RawMessage) (interface{}, err
 
 // Registry manages MCP tools and their handlers.
 type Registry struct {
-	tools    map[string]*Tool
-	handlers map[string]Handler
-	logger   *slog.Logger
-	client   *obsidian.Client
+	tools         map[string]*Tool
+	handlers      map[string]Handler
+	logger        *slog.Logger
+	noteService   *services.NoteService
+	searchService *services.SearchService
+	cmdService    *services.CommandService
 }
 
 // NewRegistry creates a new tool registry.
-func NewRegistry(logger *slog.Logger, client *obsidian.Client) *Registry {
+func NewRegistry(
+	logger *slog.Logger,
+	noteService *services.NoteService,
+	searchService *services.SearchService,
+	cmdService *services.CommandService,
+) *Registry {
 	return &Registry{
-		tools:    make(map[string]*Tool),
-		handlers: make(map[string]Handler),
-		logger:   logger,
-		client:   client,
+		tools:         make(map[string]*Tool),
+		handlers:      make(map[string]Handler),
+		logger:        logger,
+		noteService:   noteService,
+		searchService: searchService,
+		cmdService:    cmdService,
 	}
 }
 
@@ -95,9 +105,19 @@ func (r *Registry) Execute(ctx context.Context, name string, params json.RawMess
 	return result, nil
 }
 
-// GetClient returns the Obsidian client.
-func (r *Registry) GetClient() *obsidian.Client {
-	return r.client
+// GetNoteService returns the note service.
+func (r *Registry) GetNoteService() *services.NoteService {
+	return r.noteService
+}
+
+// GetSearchService returns the search service.
+func (r *Registry) GetSearchService() *services.SearchService {
+	return r.searchService
+}
+
+// GetCommandService returns the command service.
+func (r *Registry) GetCommandService() *services.CommandService {
+	return r.cmdService
 }
 
 // GetLogger returns the logger.

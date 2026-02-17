@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
+	"github.com/xvierd/mcp-obsidian-go/internal/domain"
 )
 
 // RegisterVaultTools registers all vault operation tools.
@@ -33,7 +33,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("invalid params: %w", err)
 			}
 
-			files, err := r.GetClient().ListFiles(ctx, args.Directory)
+			files, err := r.GetNoteService().ListNotes(ctx, args.Directory)
 			if err != nil {
 				return nil, err
 			}
@@ -73,7 +73,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			note, err := r.GetClient().GetNote(ctx, args.Path)
+			note, err := r.GetNoteService().GetNote(ctx, args.Path)
 			if err != nil {
 				return nil, err
 			}
@@ -120,7 +120,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			if err := r.GetClient().CreateNote(ctx, args.Path, args.Content); err != nil {
+			if err := r.GetNoteService().CreateNote(ctx, args.Path, args.Content); err != nil {
 				return nil, err
 			}
 
@@ -165,7 +165,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			if err := r.GetClient().UpdateNote(ctx, args.Path, args.Content); err != nil {
+			if err := r.GetNoteService().UpdateNote(ctx, args.Path, args.Content); err != nil {
 				return nil, err
 			}
 
@@ -210,7 +210,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			if err := r.GetClient().AppendNote(ctx, args.Path, args.Content); err != nil {
+			if err := r.GetNoteService().AppendNote(ctx, args.Path, args.Content); err != nil {
 				return nil, err
 			}
 
@@ -250,7 +250,7 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			if err := r.GetClient().DeleteNote(ctx, args.Path); err != nil {
+			if err := r.GetNoteService().DeleteNote(ctx, args.Path); err != nil {
 				return nil, err
 			}
 
@@ -312,14 +312,14 @@ func RegisterVaultTools(r *Registry) {
 				return nil, fmt.Errorf("path is required")
 			}
 
-			patch := obsidian.PatchRequest{
+			patch := domain.PatchRequest{
 				Operation:   args.Operation,
 				Target:      args.Target,
 				TargetValue: args.TargetValue,
 				Content:     args.Content,
 			}
 
-			if err := r.GetClient().PatchNote(ctx, args.Path, patch); err != nil {
+			if err := r.GetNoteService().PatchNote(ctx, args.Path, patch); err != nil {
 				return nil, err
 			}
 
