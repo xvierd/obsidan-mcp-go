@@ -15,7 +15,6 @@ type Config struct {
 	Obsidian ObsidianConfig `yaml:"obsidian"`
 	Server   ServerConfig   `yaml:"server"`
 	Cache    CacheConfig    `yaml:"cache"`
-	Vector   VectorConfig   `yaml:"vector"`
 }
 
 // ObsidianConfig holds configuration for the Obsidian REST API connection.
@@ -39,16 +38,6 @@ type CacheConfig struct {
 	Size    int           `yaml:"size"`
 }
 
-// VectorConfig holds configuration for vector search.
-type VectorConfig struct {
-	Enabled      bool   `yaml:"enabled"`
-	Provider     string `yaml:"provider"` // ollama, openai, google, cohere
-	DBPath       string `yaml:"db_path"`
-	BatchSize    int    `yaml:"batch_size"`
-	ChunkSize    int    `yaml:"chunk_size"`
-	ChunkOverlap int    `yaml:"chunk_overlap"`
-}
-
 // DefaultConfig returns a configuration with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
@@ -65,14 +54,6 @@ func DefaultConfig() *Config {
 			Enabled: true,
 			TTL:     30 * time.Second,
 			Size:    1000,
-		},
-		Vector: VectorConfig{
-			Enabled:      true,
-			Provider:     "fasttext",
-			DBPath:       "~/.mcp-obsidian/vector.db",
-			BatchSize:    10,
-			ChunkSize:    500,
-			ChunkOverlap: 50,
 		},
 	}
 }
@@ -190,17 +171,6 @@ func (c *Config) loadFromEnv() {
 		if s, err := strconv.Atoi(size); err == nil {
 			c.Cache.Size = s
 		}
-	}
-
-	// Load vector config from env
-	if enabled := os.Getenv("VECTOR_ENABLED"); enabled != "" {
-		c.Vector.Enabled = enabled == "true" || enabled == "1"
-	}
-	if provider := os.Getenv("VECTOR_PROVIDER"); provider != "" {
-		c.Vector.Provider = provider
-	}
-	if dbPath := os.Getenv("VECTOR_DB_PATH"); dbPath != "" {
-		c.Vector.DBPath = dbPath
 	}
 }
 

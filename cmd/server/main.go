@@ -142,10 +142,6 @@ func registerTools(
 		},
 	)
 
-	// Register vector tools if enabled
-	// NOTE: Vector search disabled - requires 5GB model
-	logger.Info("vector search disabled - using text search only")
-
 	// Register all tools with MCP server
 	toolCount := 0
 	for _, tool := range registry.ListTools() {

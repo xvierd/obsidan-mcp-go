@@ -197,8 +197,6 @@ func TestLoadFromEnv(t *testing.T) {
 	oldCacheEnabled := os.Getenv("CACHE_ENABLED")
 	oldCacheTTL := os.Getenv("CACHE_TTL")
 	oldCacheSize := os.Getenv("CACHE_SIZE")
-	oldVectorEnabled := os.Getenv("VECTOR_ENABLED")
-	oldVectorProvider := os.Getenv("VECTOR_PROVIDER")
 
 	defer func() {
 		os.Setenv("OBSIDIAN_API_KEY", oldAPIKey)
@@ -210,8 +208,6 @@ func TestLoadFromEnv(t *testing.T) {
 		os.Setenv("CACHE_ENABLED", oldCacheEnabled)
 		os.Setenv("CACHE_TTL", oldCacheTTL)
 		os.Setenv("CACHE_SIZE", oldCacheSize)
-		os.Setenv("VECTOR_ENABLED", oldVectorEnabled)
-		os.Setenv("VECTOR_PROVIDER", oldVectorProvider)
 	}()
 
 	// Set test environment variables
@@ -224,8 +220,6 @@ func TestLoadFromEnv(t *testing.T) {
 	os.Setenv("CACHE_ENABLED", "false")
 	os.Setenv("CACHE_TTL", "5m")
 	os.Setenv("CACHE_SIZE", "500")
-	os.Setenv("VECTOR_ENABLED", "false")
-	os.Setenv("VECTOR_PROVIDER", "openai")
 
 	cfg := DefaultConfig()
 	cfg.loadFromEnv()
@@ -256,12 +250,6 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 	if cfg.Cache.Size != 500 {
 		t.Errorf("expected cache size 500, got %d", cfg.Cache.Size)
-	}
-	if cfg.Vector.Enabled != false {
-		t.Errorf("expected vector enabled false, got %v", cfg.Vector.Enabled)
-	}
-	if cfg.Vector.Provider != "openai" {
-		t.Errorf("expected vector provider 'openai', got %s", cfg.Vector.Provider)
 	}
 }
 

@@ -7,13 +7,6 @@ VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DIR=build
 LDFLAGS=-ldflags "-X main.Version=$(VERSION) -s -w"
 
-# CGO flags for sqlite-vec (macOS needs explicit sqlite3 linking)
-ifeq ($(shell uname -s),Darwin)
-    CGO_LDFLAGS=-ldflags "-X main.Version=$(VERSION) -s -w -linkmode external -extldflags '-framework CoreFoundation -framework Security -lsqlite3'"
-else
-    CGO_LDFLAGS=$(LDFLAGS)
-endif
-
 # Default target
 all: build
 
@@ -26,21 +19,21 @@ setup:
 ## Build local binary
 build:
 	mkdir -p $(BUILD_DIR)
-	go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/server
-	go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME) ./cmd/indexer
+	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/server
+	go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME) ./cmd/indexer
 
 ## Build for all platforms
 build-all: build-darwin-amd64 build-darwin-arm64 build-linux-amd64 build-linux-arm64 build-windows-amd64
 
 build-darwin-amd64:
 	mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=amd64 go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/server
-	GOOS=darwin GOARCH=amd64 go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-amd64 ./cmd/indexer
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/server
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-amd64 ./cmd/indexer
 
 build-darwin-arm64:
 	mkdir -p $(BUILD_DIR)
-	GOOS=darwin GOARCH=arm64 go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/server
-	GOOS=darwin GOARCH=arm64 go build $(CGO_LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-arm64 ./cmd/indexer
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/server
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(INDEXER_NAME)-darwin-arm64 ./cmd/indexer
 
 build-linux-amd64:
 	mkdir -p $(BUILD_DIR)
