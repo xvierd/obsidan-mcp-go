@@ -190,8 +190,8 @@ func TestCacheStats(t *testing.T) {
 	c.Set("test1.md", &obsidian.Note{Path: "test1.md"})
 	c.Set("test2.md", &obsidian.Note{Path: "test2.md"})
 
-	c.Get("test1.md") // hit
-	c.Get("test2.md") // hit
+	c.Get("test1.md")   // hit
+	c.Get("test2.md")   // hit
 	c.Get("missing.md") // miss
 
 	stats = c.Stats()

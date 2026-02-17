@@ -139,12 +139,12 @@ func (c *Cache) Stats() Stats {
 	defer c.mu.RUnlock()
 
 	return Stats{
-		Size:      len(c.items),
-		MaxSize:   c.maxSize,
-		Hits:      c.hits,
-		Misses:    c.misses,
-		HitRate:   c.hitRate(),
-		TTL:       c.ttl,
+		Size:    len(c.items),
+		MaxSize: c.maxSize,
+		Hits:    c.hits,
+		Misses:  c.misses,
+		HitRate: c.hitRate(),
+		TTL:     c.ttl,
 	}
 }
 

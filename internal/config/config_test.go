@@ -143,7 +143,7 @@ server:
 		{
 			name:     "nonexistent file uses defaults",
 			filePath: filepath.Join(tempDir, "nonexistent.yaml"),
-			content:  "", // Don't create this file
+			content:  "",          // Don't create this file
 			wantHost: "127.0.0.1", // default
 			wantPort: 27124,       // default
 			wantErr:  false,       // Should not error, just use defaults

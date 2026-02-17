@@ -13,11 +13,11 @@ func TestBinaryExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Binary not found at %s: %v", binaryPath, err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Binary exists but is empty")
 	}
-	
+
 	// Check size is reasonable (between 1MB and 50MB)
 	if info.Size() < 1024*1024 {
 		t.Errorf("Binary too small: %d bytes", info.Size())
@@ -25,7 +25,7 @@ func TestBinaryExists(t *testing.T) {
 	if info.Size() > 50*1024*1024 {
 		t.Errorf("Binary too large: %d bytes", info.Size())
 	}
-	
+
 	fmt.Printf("✓ Server binary size: %.2f MB\n", float64(info.Size())/(1024*1024))
 }
 
@@ -36,11 +36,11 @@ func TestIndexerBinaryExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Indexer binary not found at %s: %v", binaryPath, err)
 	}
-	
+
 	if info.Size() == 0 {
 		t.Error("Indexer binary exists but is empty")
 	}
-	
+
 	fmt.Printf("✓ Indexer binary size: %.2f MB\n", float64(info.Size())/(1024*1024))
 }
 
@@ -48,26 +48,26 @@ func TestIndexerBinaryExists(t *testing.T) {
 func TestBinaryIsExecutable(t *testing.T) {
 	serverPath := "../build/mcp-obsidian-go"
 	indexerPath := "../build/mcp-obsidian-indexer"
-	
+
 	// Check server is executable
 	info, err := os.Stat(serverPath)
 	if err != nil {
 		t.Fatalf("Cannot stat server binary: %v", err)
 	}
-	
-	if info.Mode() & 0111 == 0 {
+
+	if info.Mode()&0111 == 0 {
 		t.Error("Server binary is not executable")
 	}
-	
+
 	// Check indexer is executable
 	info, err = os.Stat(indexerPath)
 	if err != nil {
 		t.Fatalf("Cannot stat indexer binary: %v", err)
 	}
-	
-	if info.Mode() & 0111 == 0 {
+
+	if info.Mode()&0111 == 0 {
 		t.Error("Indexer binary is not executable")
 	}
-	
+
 	fmt.Printf("✓ Both binaries are executable\n")
 }
