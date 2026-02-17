@@ -21,6 +21,28 @@ This project is a Go reimplementation of [py-obsidian-tools](https://github.com/
 
 ## Installation
 
+### Quick Install (Recommended)
+
+```bash
+# Download and run installer (no root required)
+curl -fsSL https://raw.githubusercontent.com/xvierd/mcp-obsidian-go/main/install.sh | bash
+
+# Or if you have the repository locally:
+./install.sh
+```
+
+The installer will:
+1. Detect your platform automatically
+2. Install the binary to `~/.local/bin/` (no sudo needed)
+3. Create config directory at `~/.config/mcp-obsidian/`
+4. Show you the exact JSON to add to Claude Desktop
+
+### Uninstall
+
+```bash
+./uninstall.sh
+```
+
 ### From Source
 
 ```bash
