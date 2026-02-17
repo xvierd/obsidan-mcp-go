@@ -11,9 +11,6 @@ import (
 	"github.com/xvierd/mcp-obsidian-go/internal/mcp"
 	"github.com/xvierd/mcp-obsidian-go/internal/obsidian"
 	"github.com/xvierd/mcp-obsidian-go/internal/tools"
-
-	_ "github.com/asg017/sqlite-vec-go-bindings/cgo"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // Version is set at build time
@@ -108,15 +105,8 @@ func registerTools(server *mcp.Server, client *obsidian.Client, cfg *config.Conf
 	)
 
 	// Register vector tools if enabled
-	if cfg.Vector.Enabled {
-		vectorCtx, err := tools.NewVectorContext(&cfg.Vector)
-		if err != nil {
-			logger.Warn("failed to create vector context, vector tools disabled", "error", err)
-		} else {
-			tools.RegisterVectorTools(registry, vectorCtx)
-			logger.Info("vector tools registered")
-		}
-	}
+	// NOTE: Vector search disabled - requires 5GB model
+	logger.Info("vector search disabled - using text search only")
 
 	// Register all tools with MCP server
 	toolCount := 0
