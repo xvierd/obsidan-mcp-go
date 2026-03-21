@@ -16,7 +16,6 @@ NC='\033[0m' # No Color
 REPO="xvierd/obsidan-mcp-go"
 BINARY_NAME="obsidan-mcp-go"
 INSTALL_DIR="${HOME}/.local/bin"
-CONFIG_DIR="${HOME}/.config/mcp-obsidian"
 
 # Print functions
 print_info() {
@@ -176,18 +175,13 @@ manual_install_instructions() {
     echo ""
     echo "2. Place it in your PATH, for example:"
     echo "   mkdir -p ~/.local/bin"
-    echo "   mv mcp-obsidian-go ~/.local/bin/"
-    echo "   chmod +x ~/.local/bin/mcp-obsidian-go"
+    echo "   mv obsidan-mcp-go ~/.local/bin/"
+    echo "   chmod +x ~/.local/bin/obsidan-mcp-go"
     echo ""
     echo "3. Ensure ~/.local/bin is in your PATH:"
     echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
     echo "   # Add this to your ~/.zshrc or ~/.bashrc"
     echo ""
-}
-
-# No-op: config is handled via environment variables in Claude Desktop
-setup_config() {
-    return 0
 }
 
 # Print Claude Desktop configuration
@@ -260,9 +254,6 @@ main() {
     else
         install_from_release || manual_install_instructions
     fi
-    
-    # Setup config
-    setup_config
     
     # Print instructions
     print_claude_config
