@@ -25,7 +25,7 @@ This project is a Go reimplementation of [py-obsidian-tools](https://github.com/
 
 ```bash
 # Download and run installer (no root required)
-curl -fsSL https://raw.githubusercontent.com/xvierd/mcp-obsidian-go/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xvierd/obsidan-mcp-go/main/install.sh | bash
 
 # Or if you have the repository locally:
 ./install.sh
@@ -47,8 +47,8 @@ The installer will:
 
 ```bash
 # Clone the repository
-git clone https://github.com/xvierd/mcp-obsidian-go.git
-cd mcp-obsidian-go
+git clone https://github.com/xvierd/obsidan-mcp-go.git
+cd obsidan-mcp-go
 
 # Build the binary
 make build
