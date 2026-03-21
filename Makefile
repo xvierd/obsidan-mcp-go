@@ -1,7 +1,7 @@
 .PHONY: all setup build build-all test test-unit test-integration coverage fmt lint vet check run clean help
 
 # Variables
-BINARY_NAME=mcp-obsidian-go
+BINARY_NAME=obsidan-mcp-go
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DIR=build
 LDFLAGS=-ldflags "-X main.Version=$(VERSION) -s -w"

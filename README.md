@@ -53,7 +53,7 @@ cd obsidan-mcp-go
 # Build the binary
 make build
 
-# The binary will be at build/mcp-obsidian-go
+# The binary will be at build/obsidan-mcp-go
 ```
 
 ## Configuration
