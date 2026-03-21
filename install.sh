@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # MCP-Obsidian-Go Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/xvierd/mcp-obsidian-go/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/xvierd/obsidan-mcp-go/main/install.sh | bash
 
 set -e
 
@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO="xvierd/mcp-obsidian-go"
-BINARY_NAME="mcp-obsidian-go"
+REPO="xvierd/obsidan-mcp-go"
+BINARY_NAME="obsidan-mcp-go"
 INSTALL_DIR="${HOME}/.local/bin"
 CONFIG_DIR="${HOME}/.config/mcp-obsidian"
 
@@ -118,7 +118,7 @@ install_from_source() {
         return 1
     }
     
-    cd mcp-obsidian-go
+    cd obsidan-mcp-go
     
     # Build
     print_info "Building binary..."
