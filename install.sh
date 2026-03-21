@@ -193,16 +193,21 @@ print_claude_config() {
     print_success "Installation complete!"
     echo "========================================"
     echo ""
+    case "$OS" in
+        darwin)
+            CONFIG_PATH="~/Library/Application Support/Claude/claude_desktop_config.json"
+            ;;
+        linux)
+            CONFIG_PATH="~/.config/Claude/claude_desktop_config.json"
+            ;;
+        *)
+            CONFIG_PATH="%APPDATA%/Claude/claude_desktop_config.json"
+            ;;
+    esac
+
     print_info "Add this to your Claude Desktop config:"
     echo ""
-    echo -e "${GREEN}macOS:${NC}"
-    echo "~/Library/Application Support/Claude/claude_desktop_config.json"
-    echo ""
-    echo -e "${GREEN}Windows:${NC}"
-    echo "%APPDATA%/Claude/claude_desktop_config.json"
-    echo ""
-    echo -e "${GREEN}Linux:${NC}"
-    echo "~/.config/Claude/claude_desktop_config.json"
+    echo -e "${GREEN}${CONFIG_PATH}${NC}"
     echo ""
     echo -e "${YELLOW}Configuration JSON:${NC}"
     cat << EOF
