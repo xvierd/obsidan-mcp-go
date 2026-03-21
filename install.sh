@@ -185,28 +185,9 @@ manual_install_instructions() {
     echo ""
 }
 
-# Create config directory
+# No-op: config is handled via environment variables in Claude Desktop
 setup_config() {
-    print_info "Setting up configuration directory..."
-    mkdir -p "$CONFIG_DIR"
-    
-    # Create example config
-    cat > "${CONFIG_DIR}/example-config.yaml" << 'EOF'
-# MCP-Obsidian-Go Configuration
-# Copy this to ~/.config/mcp-obsidian/config.yaml and fill in your API key
-
-obsidian:
-  api_key: "your-api-key-here"
-  host: "127.0.0.1"
-  port: 27124
-
-cache:
-  enabled: true
-  ttl: 30s
-  size: 1000
-EOF
-    
-    print_success "Config directory created: $CONFIG_DIR"
+    return 0
 }
 
 # Print Claude Desktop configuration
@@ -236,7 +217,9 @@ print_claude_config() {
     "obsidian": {
       "command": "${BINARY_PATH}",
       "env": {
-        "OBSIDIAN_API_KEY": "your-api-key-here"
+        "OBSIDIAN_API_KEY": "your-api-key-here",
+        "OBSIDIAN_HOST": "127.0.0.1",
+        "OBSIDIAN_PORT": "27124"
       }
     }
   }
@@ -249,8 +232,6 @@ EOF
     echo "1. Open Obsidian"
     echo "2. Install 'Local REST API' plugin from Community Plugins"
     echo "3. Go to Settings → Local REST API → Copy API Key"
-    echo ""
-    print_info "Example config saved to: ${CONFIG_DIR}/example-config.yaml"
 }
 
 # Main installation

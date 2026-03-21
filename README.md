@@ -70,26 +70,6 @@ make build
 | `CACHE_TTL` | Cache TTL duration | `30s` |
 | `CACHE_SIZE` | Maximum cache size | `1000` |
 
-### YAML Configuration File
-
-Create `.mcp-obsidian.yaml`:
-
-```yaml
-obsidian:
-  api_key: your-api-key-here
-  host: 127.0.0.1
-  port: 27124
-
-server:
-  log_level: info
-  timeout: 30s
-
-cache:
-  enabled: true
-  ttl: 30s
-  size: 1000
-```
-
 ## Claude Desktop Configuration
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
@@ -98,9 +78,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 {
   "mcpServers": {
     "obsidian": {
-      "command": "/path/to/mcp-obsidian-go",
+      "command": "/path/to/obsidan-mcp-go",
       "env": {
-        "OBSIDIAN_API_KEY": "your-api-key-here"
+        "OBSIDIAN_API_KEY": "your-api-key-here",
+        "OBSIDIAN_HOST": "127.0.0.1",
+        "OBSIDIAN_PORT": "27124"
       }
     }
   }
