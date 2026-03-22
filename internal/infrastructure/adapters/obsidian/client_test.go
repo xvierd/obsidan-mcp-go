@@ -3,6 +3,7 @@ package obsidian
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -123,20 +124,19 @@ func TestClientListNotes(t *testing.T) {
 }
 
 func TestClientCreateNote(t *testing.T) {
+	const noteContent = "# New Note\n\nThis is a test note with **bold** and `code`."
+	var receivedBody []byte
+	var receivedContentType string
+
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" {
 			t.Errorf("expected method PUT, got %s", r.Method)
 		}
-
 		if r.URL.Path != "/vault/new-note.md" {
 			t.Errorf("expected path '/vault/new-note.md', got %s", r.URL.Path)
 		}
-
-		// Verify content type header
-		if r.Header.Get("Content-Type") != "application/json" {
-			t.Error("expected Content-Type header to be application/json")
-		}
-
+		receivedContentType = r.Header.Get("Content-Type")
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
@@ -145,22 +145,39 @@ func TestClientCreateNote(t *testing.T) {
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
-	err := client.CreateNote(context.Background(), "new-note.md", "# New Note")
+	err := client.CreateNote(context.Background(), "new-note.md", noteContent)
 	if err != nil {
 		t.Errorf("CreateNote() error = %v", err)
+	}
+
+	// Must send text/markdown, not application/json
+	if receivedContentType != "text/markdown" {
+		t.Errorf("expected Content-Type text/markdown, got %s", receivedContentType)
+	}
+	// Body must be raw markdown — not JSON-wrapped (i.e. must NOT start with '{')
+	if len(receivedBody) > 0 && receivedBody[0] == '{' {
+		t.Errorf("body must be raw markdown, not JSON: got %s", string(receivedBody))
+	}
+	// Body must equal the original content exactly
+	if string(receivedBody) != noteContent {
+		t.Errorf("body mismatch:\nwant: %q\n got: %q", noteContent, string(receivedBody))
 	}
 }
 
 func TestClientUpdateNote(t *testing.T) {
+	const noteContent = "# Updated Content\n\n## Section\n\nSome text with a [link](https://example.com) and `code`."
+	var receivedBody []byte
+	var receivedContentType string
+
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" {
 			t.Errorf("expected method PUT, got %s", r.Method)
 		}
-
 		if r.URL.Path != "/vault/existing-note.md" {
 			t.Errorf("expected path '/vault/existing-note.md', got %s", r.URL.Path)
 		}
-
+		receivedContentType = r.Header.Get("Content-Type")
+		receivedBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -169,9 +186,89 @@ func TestClientUpdateNote(t *testing.T) {
 	client.httpClient = server.Client()
 	client.baseURL = server.URL
 
-	err := client.UpdateNote(context.Background(), "existing-note.md", "# Updated Content")
+	err := client.UpdateNote(context.Background(), "existing-note.md", noteContent)
 	if err != nil {
 		t.Errorf("UpdateNote() error = %v", err)
+	}
+
+	// Must send text/markdown, not application/json
+	if receivedContentType != "text/markdown" {
+		t.Errorf("expected Content-Type text/markdown, got %s", receivedContentType)
+	}
+	// Body must be raw markdown — not JSON-wrapped
+	if len(receivedBody) > 0 && receivedBody[0] == '{' {
+		t.Errorf("body must be raw markdown, not JSON: got %s", string(receivedBody))
+	}
+	// Body must equal the original content exactly
+	if string(receivedBody) != noteContent {
+		t.Errorf("body mismatch:\nwant: %q\n got: %q", noteContent, string(receivedBody))
+	}
+}
+
+func TestClientAppendNote(t *testing.T) {
+	const appendContent = "\n## Appended Section\n\nNew content appended."
+	var receivedBody []byte
+	var receivedContentType string
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected method POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/vault/my-note.md" {
+			t.Errorf("expected path '/vault/my-note.md', got %s", r.URL.Path)
+		}
+		receivedContentType = r.Header.Get("Content-Type")
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
+	client.httpClient = server.Client()
+	client.baseURL = server.URL
+
+	err := client.AppendNote(context.Background(), "my-note.md", appendContent)
+	if err != nil {
+		t.Errorf("AppendNote() error = %v", err)
+	}
+
+	// Must send text/markdown, not application/json
+	if receivedContentType != "text/markdown" {
+		t.Errorf("expected Content-Type text/markdown, got %s", receivedContentType)
+	}
+	// Body must be raw markdown — not JSON-wrapped
+	if len(receivedBody) > 0 && receivedBody[0] == '{' {
+		t.Errorf("body must be raw markdown, not JSON: got %s", string(receivedBody))
+	}
+	// Body must equal the original content exactly
+	if string(receivedBody) != appendContent {
+		t.Errorf("body mismatch:\nwant: %q\n got: %q", appendContent, string(receivedBody))
+	}
+}
+
+// TestClientPatchNoteUsesJSON verifies that PatchNote (structured data) still uses application/json.
+func TestClientPatchNoteUsesJSON(t *testing.T) {
+	var receivedContentType string
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedContentType = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient("test-key", "127.0.0.1", 27124, true)
+	client.httpClient = server.Client()
+	client.baseURL = server.URL
+
+	patch := domain.PatchRequest{
+		Operation: "append",
+		Target:    "content",
+		Content:   "extra line",
+	}
+	_ = client.PatchNote(context.Background(), "note.md", patch)
+
+	if receivedContentType != "application/json" {
+		t.Errorf("PatchNote must use application/json, got %s", receivedContentType)
 	}
 }
 

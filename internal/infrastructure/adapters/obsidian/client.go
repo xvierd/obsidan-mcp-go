@@ -134,13 +134,7 @@ func (c *Client) ListNotes(ctx context.Context, directory string) ([]string, err
 func (c *Client) CreateNote(ctx context.Context, notePath string, content string) error {
 	endpoint := path.Join("/vault/", notePath)
 
-	body := map[string]string{"content": content}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	resp, err := c.doRequest(ctx, "PUT", endpoint, jsonBody)
+	resp, err := c.doRequest(ctx, "PUT", endpoint, []byte(content), "text/markdown")
 	if err != nil {
 		return err
 	}
@@ -158,19 +152,13 @@ func (c *Client) CreateNote(ctx context.Context, notePath string, content string
 func (c *Client) UpdateNote(ctx context.Context, notePath string, content string) error {
 	endpoint := path.Join("/vault/", notePath)
 
-	body := map[string]string{"content": content}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	resp, err := c.doRequest(ctx, "PUT", endpoint, jsonBody)
+	resp, err := c.doRequest(ctx, "PUT", endpoint, []byte(content), "text/markdown")
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		return mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
@@ -200,19 +188,13 @@ func (c *Client) DeleteNote(ctx context.Context, notePath string) error {
 func (c *Client) AppendNote(ctx context.Context, notePath string, content string) error {
 	endpoint := path.Join("/vault/", notePath)
 
-	body := map[string]string{"content": content}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	resp, err := c.doRequest(ctx, "POST", endpoint, jsonBody)
+	resp, err := c.doRequest(ctx, "POST", endpoint, []byte(content), "text/markdown")
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
@@ -330,19 +312,13 @@ func (c *Client) GetActiveNote(ctx context.Context) (*domain.Note, error) {
 
 // UpdateActiveNote updates the currently active note.
 func (c *Client) UpdateActiveNote(ctx context.Context, content string) error {
-	body := map[string]string{"content": content}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	resp, err := c.doRequest(ctx, "PUT", "/active/", jsonBody)
+	resp, err := c.doRequest(ctx, "PUT", "/active/", []byte(content), "text/markdown")
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		return mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
@@ -352,19 +328,13 @@ func (c *Client) UpdateActiveNote(ctx context.Context, content string) error {
 
 // AppendActiveNote appends content to the currently active note.
 func (c *Client) AppendActiveNote(ctx context.Context, content string) error {
-	body := map[string]string{"content": content}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	resp, err := c.doRequest(ctx, "POST", "/active/", jsonBody)
+	resp, err := c.doRequest(ctx, "POST", "/active/", []byte(content), "text/markdown")
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return mapHTTPStatusToDomain(resp.StatusCode, string(body))
 	}
@@ -545,7 +515,8 @@ func (c *Client) ServerStatus(ctx context.Context) (map[string]interface{}, erro
 }
 
 // doRequest performs an HTTP request with authentication.
-func (c *Client) doRequest(ctx context.Context, method, endpoint string, body []byte) (*http.Response, error) {
+// contentType is only used when body is non-nil; pass "" to use the default "application/json".
+func (c *Client) doRequest(ctx context.Context, method, endpoint string, body []byte, contentType ...string) (*http.Response, error) {
 	url := c.baseURL + endpoint
 
 	var bodyReader io.Reader
@@ -561,7 +532,11 @@ func (c *Client) doRequest(ctx context.Context, method, endpoint string, body []
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Accept", "application/vnd.olrapi.note+json")
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		ct := "application/json"
+		if len(contentType) > 0 && contentType[0] != "" {
+			ct = contentType[0]
+		}
+		req.Header.Set("Content-Type", ct)
 	}
 
 	resp, err := c.httpClient.Do(req)
