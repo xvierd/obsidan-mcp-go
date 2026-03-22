@@ -157,6 +157,10 @@ func (s *Server) handleRequest(ctx context.Context, req *Request) *Response {
 	case "tools/call":
 		return s.handleToolCall(ctx, req)
 	default:
+		// Notifications have no id — silently ignore them
+		if req.ID == nil {
+			return nil
+		}
 		return s.makeError(req.ID, MethodNotFound, fmt.Sprintf("Method not found: %s", req.Method), nil)
 	}
 }
